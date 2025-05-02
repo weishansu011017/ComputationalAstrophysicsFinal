@@ -22,6 +22,7 @@ void ParticlesTable::_write_base_HDF5(hid_t file_id) const {
     write_scalar("umass", unittable.umass, H5T_NATIVE_FLOAT);
     // Write Other parameter
     write_scalar("N", N, H5T_NATIVE_INT);
+    write_scalar("t", t, H5T_NATIVE_FLOAT);
     write_scalar("Mtot", Mtot, H5T_NATIVE_FLOAT);
 
     // Close Group
@@ -73,6 +74,7 @@ void ParticlesTable::_read_base_HDF5(hid_t file_id){
     };
 
     // [Optional] Read Other parameters
+    read_scalar("/params","t", H5T_NATIVE_FLOAT, &t);
     read_scalar("/params","Mtot", H5T_NATIVE_FLOAT, &Mtot);
 
     // ============== /ParticlesTable/ ==============

@@ -29,6 +29,7 @@ public:
 
     // Other scalar parameter(External)
     int N;
+    float t = 0.0;
     float Mtot;
 
     // Table of particles(Internal)
