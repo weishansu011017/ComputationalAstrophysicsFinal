@@ -16,6 +16,21 @@ void ParticlesTable::_write_base_HDF5(hid_t file_id) const {
         H5Dclose(dset_id);
         H5Sclose(dataspace_id);
     };
+    auto write_string = [&](const char* name, const std::string& str) {
+        hid_t strtype = H5Tcopy(H5T_C_S1);
+        H5Tset_size(strtype, str.size() + 1);  // +1 for null terminator
+        H5Tset_strpad(strtype, H5T_STR_NULLTERM);
+    
+        hid_t dataspace_id = H5Screate(H5S_SCALAR);
+        hid_t dset_id = H5Dcreate2(g_params, name, strtype, dataspace_id,
+                                   H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    
+        H5Dwrite(dset_id, strtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, str.c_str());
+    
+        H5Dclose(dset_id);
+        H5Sclose(dataspace_id);
+        H5Tclose(strtype);
+    };
     // Write UnitsTable
     write_scalar("udist", unittable.udist, H5T_NATIVE_FLOAT);
     write_scalar("utime", unittable.utime, H5T_NATIVE_FLOAT);
@@ -24,6 +39,7 @@ void ParticlesTable::_write_base_HDF5(hid_t file_id) const {
     write_scalar("N", N, H5T_NATIVE_INT);
     write_scalar("t", t, H5T_NATIVE_FLOAT);
     write_scalar("Mtot", Mtot, H5T_NATIVE_FLOAT);
+    write_string("SimulationTag", SimulationTag);
 
     // Close Group
     H5Gclose(g_params);
@@ -59,6 +75,7 @@ void ParticlesTable::_write_base_HDF5(hid_t file_id) const {
     write_float_vector("h", h);
     write_float_vector("m", m);
     write_float_vector("dt", dt);
+    write_float_vector("a", a);
 
     // Close Group
     H5Gclose(g_table);
@@ -72,10 +89,31 @@ void ParticlesTable::_read_base_HDF5(hid_t file_id){
         H5Dread(dset, h5type, H5S_ALL, H5S_ALL, H5P_DEFAULT, dst);
         H5Dclose(dset);
     };
+    auto read_string = [&](const char* group, const char* name, std::string& dst) {
+        std::string path = std::string(group) + "/" + name;
+        hid_t dset = H5Dopen2(file_id, path.c_str(), H5P_DEFAULT);
+        hid_t type = H5Dget_type(dset);
+    
+        if (H5Tis_variable_str(type)) {
+            char* rdata = nullptr;
+            H5Dread(dset, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &rdata);
+            dst = std::string(rdata);
+            free(rdata); 
+        } else {
+            size_t size = H5Tget_size(type);
+            std::vector<char> buf(size + 1, '\0'); 
+            H5Dread(dset, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf.data());
+            dst = std::string(buf.data());
+        }
+    
+        H5Tclose(type);
+        H5Dclose(dset);
+    };
 
     // [Optional] Read Other parameters
     read_scalar("/params","t", H5T_NATIVE_FLOAT, &t);
     read_scalar("/params","Mtot", H5T_NATIVE_FLOAT, &Mtot);
+    read_string("/params", "SimulationTag", SimulationTag);
 
     // ============== /ParticlesTable/ ==============
     auto read_float_vector = [&](const char* group, const char* name, std::vector<float>& vec) {
@@ -109,6 +147,7 @@ void ParticlesTable::_read_base_HDF5(hid_t file_id){
     read_float_vector("/Table","h", h);
     read_float_vector("/Table","m", m);
     read_float_vector("/Table","dt", dt);
+    read_float_vector("/Table","a", a);
 }
 
 

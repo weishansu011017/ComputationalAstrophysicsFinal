@@ -26,14 +26,16 @@ public:
     std::vector<float> m;                                       // Mass of particle
     std::vector<float> h;                                       // Smoothing length
     std::vector<float> dt;                                      // (Unused) reserved
+    std::vector<float> a;                                       // Particle acceleration 
 
     // Other scalar parameter(External)
     int N;
     float t = 0.0;
     float Mtot;
+    std::string SimulationTag;
 
     // Table of particles(Internal)
-    std::vector<float> _a;                                       // Particle acceleration 
+    
     // Other scalar parameter(Internal)
 
     // Method declaration
@@ -51,7 +53,7 @@ public:
         std::fill(m.begin(),  m.end(),  0.0f);
         std::fill(h.begin(),  h.end(),  0.0f);
         std::fill(dt.begin(), dt.end(), 0.0f);
-        std::fill(_a.begin(), _a.end(), 0.0f);
+        std::fill(a.begin(), a.end(), 0.0f);
     }
     // Destructor
     ~ParticlesTable() = default;
@@ -88,7 +90,7 @@ protected:
         x.resize(N); y.resize(N); z.resize(N);
         vx.resize(N); vy.resize(N); vz.resize(N);
         m.resize(N); h.resize(N); dt.resize(N);
-        _a.resize(N);
+        a.resize(N);
     }
 
     // Base I/O

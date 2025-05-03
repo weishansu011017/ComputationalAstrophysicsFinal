@@ -8,17 +8,13 @@
 #include "SamplingFunctionsSet.hpp"
 
 
-ParticlesTable setup_initial_condition(ParticlesSetup setup, UnitsTable unit){
+ParticlesTable setup_initial_condition(const ParticlesSetup& setup, UnitsTable unit){
     // Varification 
-    if (setup.sampling_function.empty()) {
-        throw std::runtime_error("Failed to initilize particles: No distribution function has provided!");
-    }
+    SamplingFunctionsSet samplers = setup.get_sampler();
 
     // Initializing container
     ParticlesTable pt(unit, setup.N);
-
-    // Set sampling function
-    SamplingFunctionsSet samplers(setup);
+    pt.SimulationTag = setup.SimulationTag;
 
     // Sampling particles properties
     float Mtot = 0;

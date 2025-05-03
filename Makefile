@@ -2,7 +2,7 @@
 CXX      ?= clang++
 
 #=== Path flags ===#
-INCLUDE_DIRS := -Iinclude -Isrc
+INCLUDE_DIRS := -Iinclude -Isrc -Iutil/tomlplusplus/include
 LIB_DIRS     := -L/opt/homebrew/lib
 
 #=== Feature flags ===#
@@ -16,7 +16,8 @@ CXXFLAGS  := -std=c++17 $(INCLUDE_DIRS) $(shell pkg-config --cflags $(EXTERNAL_L
 LDFLAGS := $(LIB_DIRS) $(shell pkg-config --libs $(EXTERNAL_LIBS))
 
 #=== File structure ===#
-SRC_DIR     := src
+CORE_DIR     := src/core
+MAIN_DIR     := src/main
 TEST_DIR    := test
 BUILD_DIR   := build
 
@@ -25,6 +26,10 @@ TESTS := $(basename $(notdir $(wildcard $(TEST_DIR)/*.cpp)))
 
 #=== Target of testfiles ===#
 TESTSTARGETS := $(addprefix $(BUILD_DIR)/test/, $(TESTS))
+
+#=== Target of setup.cpp ===#
+SETUPTARGET := setup
+SETUP_SRC   := $(MAIN_DIR)/setup.cpp $(wildcard $(CORE_DIR)/*.cpp)
 
 #=== Default make ===#
 all:
@@ -35,9 +40,20 @@ all:
 	@echo "        export PKG_CONFIG_PATH=/your/custom/path/lib/pkgconfig"
 	@echo "Default build: main simulation target is not yet implemented."
 
+#=== Default Initial Condition constructor ===#
+setup:
+$(SETUPTARGET): $(SETUP_SRC)
+	@echo "### Compiler        : $(CXX)"
+	@echo "### External libs   : $(EXTERNAL_LIBS)"
+	@echo "Tip: If your dependencies are not installed in system paths,"
+	@echo "        you may need to set:"
+	@echo "        export PKG_CONFIG_PATH=/your/custom/path/lib/pkgconfig"
+	@echo "                   "
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
 #=== Compiling TestXXXXX.cpp to build/test/ ===#
 ##=== General rule for specific test code folder to test/
-$(BUILD_DIR)/test/%: $(TEST_DIR)/%.cpp $(SRC_DIR)/*.cpp
+$(BUILD_DIR)/test/%: $(TEST_DIR)/%.cpp $(CORE_DIR)/*.cpp
 	@mkdir -p $(BUILD_DIR)/test
 	$(CXX) $(CXXFLAGS) $(filter %.cpp, $^) -o $@ $(LDFLAGS)
 ##=== Compiling specific TestXXXXX.cpp ===##

@@ -19,14 +19,14 @@
 int main(){
 
     // Randomly setup code unit (Doesn't matter)
+    std::string tag = "setup";
     UnitsTable unit;
-    ParticlesSetup setup;
-    setup.N = 10000;
+    ParticlesSetupUniform setup(tag);
     ParticlesTable pt = setup_initial_condition(setup, unit);
 
 
     // I/O the file
-    pt.extract_particles_table("TEST.hdf5");
+    pt.extract_particles_table(pt.SimulationTag + ".h5");
 
     // // Verifing the data
     // float msum1 = 0, msum2 = 0;

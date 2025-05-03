@@ -14,6 +14,6 @@ Initilizing the initial condition of particles from `ParticlesSetup`
 ## Output
     - `ParticlesTable`: The table of particles.
 */
-ParticlesTable setup_initial_condition(ParticlesSetup setup, UnitsTable unit);
+ParticlesTable setup_initial_condition(const ParticlesSetup& setup, UnitsTable unit);
 
 
