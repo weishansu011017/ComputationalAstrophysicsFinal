@@ -75,7 +75,6 @@ void ParticlesTable::_write_base_HDF5(hid_t file_id) const {
     write_float_vector("h", h);
     write_float_vector("m", m);
     write_float_vector("dt", dt);
-    write_float_vector("a", a);
 
     // Close Group
     H5Gclose(g_table);
@@ -147,7 +146,6 @@ void ParticlesTable::_read_base_HDF5(hid_t file_id){
     read_float_vector("/Table","h", h);
     read_float_vector("/Table","m", m);
     read_float_vector("/Table","dt", dt);
-    read_float_vector("/Table","a", a);
 }
 
 

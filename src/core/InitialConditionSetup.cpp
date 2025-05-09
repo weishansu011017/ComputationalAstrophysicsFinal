@@ -21,13 +21,15 @@ ParticlesTable setup_initial_condition(const ParticlesSetup& setup, UnitsTable u
     for (int i = 0; i < pt.N; ++i) {
         pt.particle_index[i] = static_cast<uint32_t>(i + 1);
 
-        pt.x[i] = samplers.xsampler();
-        pt.y[i] = samplers.ysampler();
-        pt.z[i] = samplers.zsampler();
+        auto coor = samplers.coorsampler();
 
-        pt.vx[i] = samplers.vxsampler();
-        pt.vy[i] = samplers.vysampler();
-        pt.vz[i] = samplers.vzsampler();
+        pt.x[i] = coor[0];
+        pt.y[i] = coor[1];
+        pt.z[i] = coor[2];
+
+        pt.vx[i] = coor[3];
+        pt.vy[i] = coor[4];
+        pt.vz[i] = coor[5];
 
         float mi = samplers.msampler();
         pt.m[i] = mi;

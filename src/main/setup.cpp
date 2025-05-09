@@ -14,7 +14,7 @@ int main(int argc, char** argv){
     }
     std::cout << "\n";
     std::cout << " Initial Condition Sampler\n";
-    std::cout << "     Version 0.0.1\n";
+    std::cout << "     Version 0.0.2\n";
 
     // Preparing input output argument
     std::string ICsetup = argv[1];
@@ -28,6 +28,10 @@ int main(int argc, char** argv){
         std::cout << " Select Initial Condition mode: `uniform`\n";
         std::cout << "     (Uniform box inside a given cube with given mass sampling range)\n\n";
         setupptr = std::make_unique<ParticlesSetupUniform>(simulation_tag);
+    } else if (ICsetup == "isotropic") {
+        std::cout << " Select Initial Condition mode: `isotropic`\n";
+        std::cout << "     (Isotropic sphere with power law distribution along spacial direction.)\n\n";
+        setupptr = std::make_unique<ParticlesSetupIsotropic>(simulation_tag);
     } else {
         throw std::runtime_error("Unsupported setup mode: " + ICsetup);
     }

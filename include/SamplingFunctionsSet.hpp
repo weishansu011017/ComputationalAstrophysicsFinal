@@ -5,8 +5,7 @@
 class SamplingFunctionsSet {
 public:
     // Function set for sampling
-    std::function<float()> xsampler, ysampler, zsampler;
-    std::function<float()> vxsampler, vysampler, vzsampler;
+    std::function<std::array<float, 6>()> coorsampler;
     std::function<float()> msampler;
 
     // Destructor

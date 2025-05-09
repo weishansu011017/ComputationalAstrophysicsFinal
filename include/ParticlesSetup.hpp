@@ -4,8 +4,11 @@
 #include <fstream>
 #include <filesystem>
 #include <random>
+#include <vector>
+#include <math.h>
 #include <toml++/toml.h>
 #include "SamplingFunctionsSet.hpp"
+#include "MathematicsTools.hpp"
 
 /*
 Particles setup properties
@@ -128,18 +131,19 @@ public:
         std::uniform_real_distribution<float> distvy(vymin, vymax);
         std::uniform_real_distribution<float> distvz(vzmin, vzmax);
         std::uniform_real_distribution<float> distm(mmin, mmax);
-
-        sampler.xsampler = [=]() mutable { return distx(rng); };
-        sampler.ysampler = [=]() mutable { return disty(rng); };
-        sampler.zsampler = [=]() mutable { return distz(rng); };
-
-        sampler.vxsampler = [=]() mutable { return distvx(rng); };
-        sampler.vysampler = [=]() mutable { return distvy(rng); };
-        sampler.vzsampler = [=]() mutable { return distvz(rng); };
-
+        
+        sampler.coorsampler = [=]() mutable -> std::array<float, 6> {
+            return {
+                distx(rng),
+                disty(rng),
+                distz(rng),
+                distvx(rng),
+                distvy(rng),
+                distvz(rng)
+            };
+        };    
         sampler.msampler = [=]() mutable { return distm(rng); };
 
-        // 其他維度以同樣邏輯處理
         return sampler;
     }
     
@@ -162,3 +166,122 @@ protected:
     */
    void _read_setupin_toml(const std::string& filename);
 };
+
+class ParticlesSetupIsotropic : public ParticlesSetup{
+    public:
+        // Center of sphere
+        float rcx = 0.0f;
+        float rcy = 0.0f;
+        float rcz = 0.0f;
+        // Range of r
+        float rmax = 1.0f;
+        float alpha = -2.0f; // r-sampling with power law rho(r) ∝ r^alpha
+
+        // Range of vr
+        float vrmin = -1.0f;
+        float vrmax = 1.0f;
+        // Range of vphi
+        float vphimin = -1.0f;
+        float vphimax = 1.0f;
+        // Range of vtheta
+        float vthetamin = -1.0f;
+        float vthetamax = 1.0f;
+
+    
+        // Range of mass
+        float mmin = 1e-20f;
+        float mmax = 1.0f;
+        
+    
+        // Constructor
+        ParticlesSetupIsotropic(const std::string& simulation_tag){
+            std::string filename = simulation_tag + ".setup";
+            if (std::filesystem::exists(filename)) {
+                std::cout << "Reading setup from " << filename << std::endl;
+                _read_setupin_toml(filename);
+            } else {
+                std::cerr << "Setup file not found: " << filename << "\n"
+              << "A default setup file has been created at the same location.\n"
+              << "Please edit the file and re-run the program.\n";
+                _make_setupin_toml(simulation_tag);
+                std::exit(0); 
+            }
+        }
+        
+        // Other Method
+        /*
+            SamplingFunctionsSet get_sampler();
+        Make the initial condition sampler that correspoinding to the mode of setup.
+
+        # Output
+        - `SamplingFunctionsSet`
+        */
+        SamplingFunctionsSet get_sampler() const override {
+            std::mt19937 rng(std::random_device{}());
+
+            SamplingFunctionsSet sampler;
+            
+            // velocity sampler
+            std::uniform_real_distribution<float> distvr(vrmin, vrmax);
+            std::uniform_real_distribution<float> distvphi(vphimin, vphimax);
+            std::uniform_real_distribution<float> distvtheta(vthetamin, vthetamax);
+            std::uniform_real_distribution<float> distm(mmin, mmax);
+
+            // rsampler
+            std::uniform_real_distribution<float> urand(0.0f,1.0f);
+            auto r_sampler = [=]() mutable {
+                float u = urand(rng);
+                float a = -1.0f; 
+                float exp = a + 3.0f;
+                float norm = std::pow(rmax, exp) - std::pow(1e-3, exp);
+                return std::pow(u * norm + std::pow(1e-3, exp), 1.0f / exp);
+            };
+            auto xyz_sampler = [=]() mutable {
+                // sample position
+                float r = r_sampler();
+                float phi = 2.0f * M_PI * urand(rng);
+                float theta = std::acos(1.0f - 2.0f * urand(rng));  // sampling on cos(theta)
+                // sample velocity
+                float vr = distvr(rng);
+                float vphi = distvphi(rng);
+                float vtheta = distvtheta(rng);
+
+                std::array<float, 6> sph_coor{};
+                sph_coor[0] = r;
+                sph_coor[1] = phi;
+                sph_coor[2] = theta;
+                sph_coor[3] = vr;
+                sph_coor[4] = vphi;
+                sph_coor[5] = vtheta;
+
+                std::array<float, 6> cart_coor = sph2cart(sph_coor);
+                cart_coor[0] += rcx;                                // Shift to center
+                cart_coor[1] += rcy;                                // Shift to center
+                cart_coor[2] += rcz;                                // Shift to center
+
+                return cart_coor;
+            };
+            sampler.coorsampler = xyz_sampler;
+            sampler.msampler = [=]() mutable { return distm(rng); };
+            return sampler;
+        }
+        
+            
+    private:
+    protected:  
+        /*
+            void _make_setupin_toml() const;
+        (Internal Method) Extract a TOML setup file for setup
+        ## Input
+            - string filename: Name of input
+        */
+        void _make_setupin_toml(const std::string& filename) const;
+        /*
+            void _read_setupin_toml() const;
+        (Internal Method) Read a TOML setup file for setup
+    
+         ## Input
+            - string filename: Name of input
+        */
+       void _read_setupin_toml(const std::string& filename);
+    };

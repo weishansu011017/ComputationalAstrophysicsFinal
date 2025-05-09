@@ -25,8 +25,12 @@ public:
     std::vector<float> vz;                                      // z-velocity
     std::vector<float> m;                                       // Mass of particle
     std::vector<float> h;                                       // Smoothing length
-    std::vector<float> dt;                                      // (Unused) reserved
-    std::vector<float> a;                                       // Particle acceleration 
+    std::vector<float> dt;                                      // time step of particles
+
+    // Table of particles(Internal)
+    std::vector<float> _ax;                                     // x-Particle acceleration
+    std::vector<float> _ay;                                     // y-Particle acceleration 
+    std::vector<float> _az;                                     // z-Particle acceleration 
 
     // Other scalar parameter(External)
     int N;
@@ -53,7 +57,9 @@ public:
         std::fill(m.begin(),  m.end(),  0.0f);
         std::fill(h.begin(),  h.end(),  0.0f);
         std::fill(dt.begin(), dt.end(), 0.0f);
-        std::fill(a.begin(), a.end(), 0.0f);
+        std::fill(_ax.begin(), _ax.end(), 0.0f);
+        std::fill(_ay.begin(), _ay.end(), 0.0f);
+        std::fill(_az.begin(), _az.end(), 0.0f);
     }
     // Destructor
     ~ParticlesTable() = default;
@@ -77,6 +83,9 @@ public:
 
     ## Input
         - string filename: Name of input
+    
+    ## Output
+        - ParticlesTable pt: The `ParticlesTable` object.
     */
     static ParticlesTable read_particles_table(const std::string& filename);
     
@@ -90,7 +99,7 @@ protected:
         x.resize(N); y.resize(N); z.resize(N);
         vx.resize(N); vy.resize(N); vz.resize(N);
         m.resize(N); h.resize(N); dt.resize(N);
-        a.resize(N);
+        _ax.resize(N),_ay.resize(N),_az.resize(N);
     }
 
     // Base I/O
