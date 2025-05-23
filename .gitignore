@@ -182,6 +182,11 @@ _build/
 _static/
 _templates/
 
+.vscode
+./temp/*
+Makefile
+
+
 # Custom project ignores
 # =============================================================================
 # Add any project-specific files here
