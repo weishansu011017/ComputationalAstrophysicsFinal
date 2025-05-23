@@ -1,6 +1,7 @@
 #pragma once
 #include <math.h>
 #include <vector>
+#include <array>
 
 /*
     std::array<float, 6> sph2cart(std::array<float, 6> sph_coor);

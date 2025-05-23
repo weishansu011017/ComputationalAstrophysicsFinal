@@ -1,10 +1,10 @@
 #=== Toolchain ===#
 LLVM_DIR := /opt/homebrew/opt/llvm
-CXX := $(LLVM_DIR)/bin/clang++
+CXX := g++
 
 #=== Path flags ===#
 INCLUDE_DIRS := -Iinclude -Isrc -Iutil/tomlplusplus/include
-LIB_DIRS     := -L/opt/homebrew/lib
+LIB_DIRS     := -L/usr/lib/gcc/x86_64-linux-gnu/11/
 
 #=== Feature flags ===#
 

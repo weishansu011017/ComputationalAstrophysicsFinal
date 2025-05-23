@@ -1,3 +1,9 @@
+# =============================================================================
+# Computational Astrophysics Project .gitignore
+# =============================================================================
+
+# Build artifacts and executables
+# =============================================================================
 # Prerequisites
 *.d
 
@@ -50,6 +56,135 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-.vscode
-./temp/*
-Makefile
+
+# Project-specific executables
+# =============================================================================
+# Main setup executable
+setup
+setup.exe
+
+# Test executables (from your Makefile)
+build/test/
+TestInitialization
+TestParticlesIO
+TestSph2Cart
+
+# Build directory contents (keep directory structure)
+build/*
+!build/.gitkeep
+
+# Simulation and data files
+# =============================================================================
+# HDF5 output files
+*.h5
+*.hdf5
+*.H5
+
+# TOML setup configuration files (you may want to version control these)
+# Uncomment the next line if you don't want to track setup files
+# *.setup
+
+# Temporary data files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Backup files
+*.bak
+*.backup
+*~
+*.swp
+*.swo
+
+# Development environment files
+# =============================================================================
+# VS Code
+.vscode/
+*.code-workspace
+
+# CLion
+.idea/
+cmake-build-*/
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+
+# Eclipse CDT
+.cproject
+.project
+.settings/
+
+# Vim
+*.vim
+.vim/
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# System files
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.Trash-*
+.nfs*
+
+# Logs and temporary files
+# =============================================================================
+*.log
+*.out
+*.err
+core
+core.*
+
+# Package management
+# =============================================================================
+# Conan
+conanfile.txt.user
+conaninfo.txt
+conanbuildinfo.*
+build/
+
+# vcpkg
+vcpkg_installed/
+
+# Documentation
+# =============================================================================
+# Doxygen
+doc/html/
+doc/latex/
+doc/man/
+
+# Sphinx
+_build/
+_static/
+_templates/
+
+# Custom project ignores
+# =============================================================================
+# Add any project-specific files here
+# Example: ignore large test datasets
+# data/large_datasets/
+# simulation_results/
