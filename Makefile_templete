@@ -1,5 +1,6 @@
 #=== Toolchain ===#
-CXX      ?= clang++
+LLVM_DIR := /opt/homebrew/opt/llvm
+CXX      := clang++
 
 #=== Path flags ===#
 INCLUDE_DIRS := -Iinclude -Isrc -Iutil/tomlplusplus/include
