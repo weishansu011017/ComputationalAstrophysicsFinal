@@ -1,5 +1,6 @@
 #=== Toolchain ===#
-CXX      ?= clang++
+LLVM_DIR := /opt/homebrew/opt/llvm
+CXX := $(LLVM_DIR)/bin/clang++
 
 #=== Path flags ===#
 INCLUDE_DIRS := -Iinclude -Isrc -Iutil/tomlplusplus/include
@@ -12,8 +13,10 @@ LIB_DIRS     := -L/opt/homebrew/lib
 EXTERNAL_LIBS := hdf5
 
 #=== Aggregate final flags ===#
-CXXFLAGS  := -std=c++17 $(INCLUDE_DIRS) $(shell pkg-config --cflags $(EXTERNAL_LIBS))
-LDFLAGS := $(LIB_DIRS) $(shell pkg-config --libs $(EXTERNAL_LIBS))
+CXXFLAGS := -std=c++17 -O3 -march=native -fopenmp $(INCLUDE_DIRS) \
+            $(shell pkg-config --cflags $(EXTERNAL_LIBS))
+LDFLAGS := $(LIB_DIRS) $(shell pkg-config --libs $(EXTERNAL_LIBS)) \
+           -L$(LLVM_DIR)/lib -Wl,-rpath,$(LLVM_DIR)/lib
 
 #=== File structure ===#
 CORE_DIR     := src/core

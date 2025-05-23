@@ -17,3 +17,13 @@ Initilizing the initial condition of particles from `ParticlesSetup`
 ParticlesTable setup_initial_condition(const ParticlesSetup& setup, UnitsTable unit);
 
 
+/*
+    void generate_parameters_file(const ParticlesSetup& setup)
+Generate a parameters file for simulation
+
+## Input 
+    - ParticlesSetup setup: The parameter of setup 
+*/
+void generate_parameters_file(const ParticlesSetup& setup);
+
+

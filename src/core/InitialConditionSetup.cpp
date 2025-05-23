@@ -39,3 +39,25 @@ ParticlesTable setup_initial_condition(const ParticlesSetup& setup, UnitsTable u
     return pt;
 }
 
+void generate_parameters_file(const ParticlesSetup& setup){
+    /*
+    Possible including:
+    - Simulation related
+    -- current file (update while extracting new dumpfile)
+    -- maximum time
+    ...
+
+    - CPU 
+    -- OpenMP option
+    --- Number of threads ....
+    ....
+    - GPU
+    -- Enable CUDA....
+    --- block size...
+    --- ... other
+
+    IDK which is beter: Export as TOML or like
+    ## define ....
+    ## define ...
+    */
+}

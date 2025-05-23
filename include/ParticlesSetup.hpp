@@ -19,13 +19,15 @@ public:
     int N = 10000;
 
     // Code units
-    float udist = 1.0;
-    float umass = 1.0;
+    float udist = 3.08567758128e18;
+    float umass = 1.989e33;
     // Other parameters
 
     // Destructor
-    virtual SamplingFunctionsSet get_sampler() const = 0;
     virtual ~ParticlesSetup() = default;
+
+    // Other method (for decline only)
+    virtual SamplingFunctionsSet get_sampler() const = 0;
 
     // Other variable
     std::string SimulationTag = "";
@@ -35,43 +37,7 @@ private:
 protected:
     template <typename T>
     void _write_toml_kvc(std::ofstream& fout, const std::string& key, const T& value, const std::string& comment,
-                                int key_width = 14, int eq_pos = 18, int val_pos = 38, int comment_pos = 50) const {
-        std::ostringstream val_stream;
-
-        if constexpr (std::is_same_v<T, std::string>)
-            val_stream << "\"" << value << "\"";
-        else if constexpr (std::is_same_v<T, bool>)
-            val_stream << (value ? "true" : "false");
-        else if constexpr (std::is_floating_point_v<T>)
-            val_stream << std::scientific << std::setprecision(4) << std::showpoint << value;
-        else
-            val_stream << value;
-
-        std::string val_str = val_stream.str();
-
-        // indent
-        fout << std::string(4, ' ');  // 4 space indent
-
-        // key + padding to equal sign
-        fout << std::left << std::setw(key_width) << key;
-
-        // equal sign
-        fout << " = ";
-
-        // value (right-aligned)
-        int val_field_width = val_pos - eq_pos;
-        fout << std::right << std::setw(val_field_width) << val_str;
-
-        // comment alignment
-        if (!comment.empty()) {
-            int curr_pos = eq_pos + val_field_width + 4; // estimated current column
-            if (curr_pos < comment_pos)
-                fout << std::string(comment_pos - curr_pos, ' ');
-            fout << "# " << comment;
-        }
-
-        fout << '\n';
-    }
+                                int key_width = 14, int eq_pos = 18, int val_pos = 38, int comment_pos = 50) const; 
 };
 
 class ParticlesSetupUniform : public ParticlesSetup{

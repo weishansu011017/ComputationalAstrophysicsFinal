@@ -4,6 +4,51 @@
 #include "ParticlesSetup.hpp"
 
 
+// Global: // Case: ParticlesSetup
+
+template <typename T>
+void ParticlesSetup::_write_toml_kvc(std::ofstream& fout, const std::string& key, const T& value, const std::string& comment,
+                            int key_width, int eq_pos, int val_pos, int comment_pos) const {
+    std::ostringstream val_stream;
+
+    if constexpr (std::is_same_v<T, std::string>)
+        val_stream << "\"" << value << "\"";
+    else if constexpr (std::is_same_v<T, bool>)
+        val_stream << (value ? "true" : "false");
+    else if constexpr (std::is_floating_point_v<T>)
+        val_stream << std::scientific << std::setprecision(4) << std::showpoint << value;
+    else
+        val_stream << value;
+
+    std::string val_str = val_stream.str();
+
+    // indent
+    fout << std::string(4, ' ');  // 4 space indent
+
+    // key + padding to equal sign
+    fout << std::left << std::setw(key_width) << key;
+
+    // equal sign
+    fout << " = ";
+
+    // value (right-aligned)
+    int val_field_width = val_pos - eq_pos;
+    fout << std::right << std::setw(val_field_width) << val_str;
+
+    // comment alignment
+    if (!comment.empty()) {
+        int curr_pos = eq_pos + val_field_width + 4; // estimated current column
+        if (curr_pos < comment_pos)
+            fout << std::string(comment_pos - curr_pos, ' ');
+        fout << "# " << comment;
+    }
+
+    fout << '\n';
+}
+
+
+// Case: ParticlesSetupUniform
+
 void ParticlesSetupUniform::_make_setupin_toml(const std::string& simulation_tag) const{
     std::string filename = simulation_tag + ".setup";
     std::ofstream fout(filename, std::ios::out | std::ios::trunc);
@@ -46,6 +91,10 @@ void ParticlesSetupUniform::_read_setupin_toml(const std::string& filename) {
     } catch (const toml::parse_error& err) {
         throw std::runtime_error("TOML parsing error: " + std::string(err.description()));
     }
+    std::string icsetup = config["ICSetup"].as_string()->get();
+    if (icsetup != "uniform") {
+        throw std::runtime_error("Wrong setup error: The setup file should be consistent with \"uniform\", but got \"" + icsetup + "\"");
+    }
 
     // ========= Simulation Parameters =========
     N      = config["SimulationParameters"]["N"].value_or(N);
@@ -71,6 +120,8 @@ void ParticlesSetupUniform::_read_setupin_toml(const std::string& filename) {
     mmin = config["InitialConditions"]["mmin"].value_or(mmin);
     mmax = config["InitialConditions"]["mmax"].value_or(mmax);
 };
+
+// Case: ParticlesSetupIsotropic
 
 void ParticlesSetupIsotropic::_make_setupin_toml(const std::string& simulation_tag) const{
     std::string filename = simulation_tag + ".setup";
@@ -113,6 +164,10 @@ void ParticlesSetupIsotropic::_read_setupin_toml(const std::string& filename) {
         config = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
         throw std::runtime_error("TOML parsing error: " + std::string(err.description()));
+    }
+    std::string icsetup = config["ICSetup"].as_string()->get();
+    if (icsetup != "isotropic") {
+        throw std::runtime_error("Wrong setup error: The setup file should be consistent with \"isotropic\", but got \"" + icsetup + "\"");
     }
 
     // ========= Simulation Parameters =========

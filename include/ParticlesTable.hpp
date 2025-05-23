@@ -90,6 +90,39 @@ public:
     static ParticlesTable read_particles_table(const std::string& filename);
     
 
+    /*
+        void calculate_a_dirnbody()
+
+    Calculate the acceleration by direct N-body method
+    */
+   void calculate_a_dirnbody();
+
+   /*
+        void calculate_a_BHtree()
+
+    Calculate the acceleration by Barnes–Hut tree
+    */
+   void calculate_a_BHtree();
+
+    /*
+        void kick();
+
+    Do a kick operation to all of the active particles
+
+    ## Input
+        - float scale: scale of dt (stepping ... + scale * dt)
+    */
+    void kick(float scale = 1.0);
+
+    /*
+        void drift();
+        
+    Do a drift operation to all of the active particles
+
+    ## Input
+        - float scale: scale of dt (stepping ... + scale * dt)
+    */
+    void drift(float scale = 1.0);
 
 protected:
 

@@ -201,3 +201,19 @@ ParticlesTable ParticlesTable::read_particles_table(const std::string& filename)
 
     return pt;
 }
+
+void ParticlesTable::calculate_a_dirnbody(){
+    // NEED IMPLEMENT
+}
+
+void ParticlesTable::calculate_a_BHtree(){
+    // NEED IMPLEMENT
+}
+
+void ParticlesTable::kick(float scale){
+    // NEED IMPLEMENT
+}
+
+void ParticlesTable::drift(float scale){
+    // NEED IMPLEMENT
+}

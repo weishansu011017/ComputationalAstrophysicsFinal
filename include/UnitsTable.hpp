@@ -18,13 +18,17 @@ public:
     UnitsTable(float _udist = 1.0f, float _umass = 1.0f)
         : udist(_udist), umass(_umass)
     {
-        if (_udist <= 0.0f || _umass <= 0.0f)
+        if (_udist <= 0.0f || _umass <= 0.0f){
             throw std::invalid_argument(
                 "Code units must be positive. Received udist = " + std::to_string(_udist)
                 + ", umass = " + std::to_string(_umass));
-
-        utime = std::sqrt(1.0f / (umass * CGSConstants::G / udist / udist / udist ));
-    }
+        }
+        double dudist = _udist;
+        double dumass = _umass;
+        double dutime = utime;
+        dutime = std::sqrt((dudist * dudist * dudist) / (dumass * CGSConstants::G));
+        utime = dutime;
+    }   
 
     // Destructor
     ~UnitsTable() = default;
