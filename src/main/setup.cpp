@@ -5,6 +5,7 @@
 #include "UnitsTable.hpp"
 #include "ParticlesTable.hpp"
 #include "PhysicalConstants.hpp"
+#include "SimulationSetup.hpp"
 
 int main(int argc, char** argv){
     // Checking arguments
@@ -40,6 +41,10 @@ int main(int argc, char** argv){
 
     // Sampling particles
     ParticlesTable pt = setup_initial_condition(*setupptr, units);
+
+    float dtref = mean(pt.dt);
+    // Generate empty parameters file
+    SimulationSetup::generate_parameters_file(*setupptr, dtref);
 
     // Print output log
     std::cout << "\n ===============================================================\n\n";

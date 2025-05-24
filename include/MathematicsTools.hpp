@@ -2,7 +2,24 @@
 #include <math.h>
 #include <vector>
 #include <array>
+#include <numeric>
 
+/*
+    float mean(const std::vector<T>& vec);
+
+Calculate the arithmetic mean of a 1D container (e.g., std::vector).
+
+## Input
+    - const std::vector<T>& vec: The input 1D container containing numeric values.
+
+## Output
+    - float: The average (mean) value of the container. Returns 0.0 if the input is empty.
+*/
+template <typename T>
+float mean(const std::vector<T>& vec) {
+    if (vec.empty()) return 0.0f;
+    return std::accumulate(vec.begin(), vec.end(), 0.0f) / static_cast<float>(vec.size());
+}
 /*
     std::array<float, 6> sph2cart(std::array<float, 6> sph_coor);
 
