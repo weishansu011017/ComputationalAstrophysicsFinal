@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barnes-Hut Tree Construction - Interactive Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 0 60px 0;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .header h1 {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ffd700, #ff6b35, #f7931e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.3em;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .demo-section {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            margin: 40px 0;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .section-title {
+            font-size: 2.2em;
+            margin-bottom: 25px;
+            color: #ffd700;
+            text-align: center;
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, #ffd700, #ff6b35);
+            border-radius: 2px;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+
+        .canvas-container {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            position: relative;
+        }
+
+        .canvas {
+            width: 100%;
+            height: 400px;
+            border-radius: 10px;
+            background: #0a0a0a;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: crosshair;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #ffd700;
+            font-size: 1.1em;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            margin: 8px 4px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.5);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn.secondary:hover {
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .step-display {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #ffd700;
+        }
+
+        .step-display h3 {
+            color: #ffd700;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+
+        .step-display p {
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+
+        .code-display {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+
+        .code-line {
+            margin: 5px 0;
+            padding: 3px 8px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .code-line.highlight {
+            background: rgba(255, 215, 0, 0.2);
+            border-left: 3px solid #ffd700;
+        }
+
+        .keyword { color: #ff7b72; }
+        .type { color: #79c0ff; }
+        .function { color: #d2a8ff; }
+        .comment { color: #8b949e; }
+        .string { color: #a5d6ff; }
+        .number { color: #79c0ff; }
+
+        .particle {
+            fill: #ff6b35;
+            stroke: #ffffff;
+            stroke-width: 1.5;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .particle:hover {
+            fill: #ffd700;
+            r: 8;
+        }
+
+        .tree-boundary {
+            fill: none;
+            stroke: #ffd700;
+            stroke-width: 2;
+            opacity: 0.7;
+            stroke-dasharray: 5,5;
+            animation: dash 2s linear infinite;
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -10; }
+        }
+
+        .center-of-mass {
+            fill: #00ff88;
+            stroke: #ffffff;
+            stroke-width: 2;
+            opacity: 0.8;
+        }
+
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 300px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .info-panel.show {
+            transform: translateX(0);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #ff6b35);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .algorithm-steps {
+            display: grid;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .algorithm-step {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border-left: 5px solid #ffd700;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .algorithm-step:hover {
+            transform: translateX(10px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .algorithm-step.active {
+            border-left-color: #ff6b35;
+            background: rgba(255, 107, 53, 0.1);
+        }
+
+        .step-number {
+            position: absolute;
+            left: -15px;
+            top: 20px;
+            width: 30px;
+            height: 30px;
+            background: #ffd700;
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .step-title {
+            font-size: 1.4em;
+            color: #ffd700;
+            margin-bottom: 10px;
+            margin-left: 20px;
+        }
+
+        .step-description {
+            line-height: 1.6;
+            opacity: 0.9;
+            margin-left: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2.5em;
+            }
+            
+            .info-panel {
+                position: relative;
+                transform: none;
+                margin: 20px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌌 Barnes-Hut Tree Construction</h1>
+            <p>Interactive demonstration of how spatial trees enable O(N log N) gravitational force calculations</p>
+        </div>
+
+        <div class="demo-section">
+            <h2 class="section-title">🎯 Step 1: Particle Placement & Tree Building</h2>
+            <div class="demo-grid">
+                <div class="canvas-container">
+                    <canvas id="mainCanvas" class="canvas" width="500" height="400"></canvas>
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-value" id="particleCount">0</div>
+                            <div class="stat-label">Particles</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="treeDepth">0</div>
+                            <div class="stat-label">Tree Depth</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="nodeCount">0</div>
+                            <div class="stat-label">Tree Nodes</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label>🎮 Interactive Controls</label>
+                        <button class="btn" onclick="addRandomParticles(5)">Add 5 Particles</button>
+                        <button class="btn" onclick="addRandomParticles(1)">Add 1 Particle</button>
+                        <button class="btn secondary" onclick="clearCanvas()">Clear All</button>
+                    </div>
+
+                    <div class="control-group">
+                        <label>🌳 Tree Operations</label>
+                        <button class="btn" onclick="buildTreeAnimation()">Build Tree</button>
+                        <button class="btn" onclick="showCentersOfMass()">Show Centers of Mass</button>
+                        <button class="btn secondary" onclick="stepByStepDemo()">Step-by-Step Demo</button>
+                    </div>
+
+                    <div class="step-display">
+                        <h3 id="stepTitle">Click anywhere to add particles!</h3>
+                        <p id="stepDescription">Start by clicking on the canvas above to place particles. Watch how the tree automatically subdivides space as you add more particles.</p>
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2 class="section-title">🔧 Step 2: Code Implementation Walkthrough</h2>
+            <div class="algorithm-steps">
+                <div class="algorithm-step" id="step1">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Node Constructor</div>
+                    <div class="step-description">
+                        Initialize spatial boundaries and physics data for each tree node.
+                    </div>
+                    <div class="code-display">
+                        <div class="code-line"><span class="type">QuadTreeNode</span>::<span class="function">QuadTreeNode</span>(<span class="type">float</span> xmin, <span class="type">float</span> xmax, <span class="type">float</span> ymin, <span class="type">float</span> ymax)</div>
+                        <div class="code-line">    : <span class="keyword">totalMass</span>(<span class="number">0.0f</span>) {</div>
+                        <div class="code-line">    bounds[<span class="number">0</span>] = xmin; bounds[<span class="number">1</span>] = xmax; <span class="comment">// Set boundaries</span></div>
+                        <div class="code-line">    bounds[<span class="number">2</span>] = ymin; bounds[<span class="number">3</span>] = ymax;</div>
+                        <div class="code-line">    <span class="function">std::fill</span>(children, children + <span class="number">4</span>, <span class="keyword">nullptr</span>); <span class="comment">// Empty children</span></div>
+                        <div class="code-line">}</div>
+                    </div>
+                </div>
+
+                <div class="algorithm-step" id="step2">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Spatial Indexing</div>
+                    <div class="step-description">
+                        Determine which quadrant a particle belongs to using bitwise operations.
+                    </div>
+                    <div class="code-display">
+                        <div class="code-line"><span class="type">int</span> <span class="function">getQuadrant</span>(<span class="type">float</span> x, <span class="type">float</span> y) <span class="keyword">const</span> {</div>
+                        <div class="code-line">    <span class="type">float</span> midX = (bounds[<span class="number">0</span>] + bounds[<span class="number">1</span>]) / <span class="number">2</span>; <span class="comment">// Find center</span></div>
+                        <div class="code-line">    <span class="type">float</span> midY = (bounds[<span class="number">2</span>] + bounds[<span class="number">3</span>]) / <span class="number">2</span>;</div>
+                        <div class="code-line">    <span class="type">int</span> quad = <span class="number">0</span>;</div>
+                        <div class="code-line">    <span class="keyword">if</span> (x >= midX) quad |= <span class="number">1</span>; <span class="comment">// East bit</span></div>
+                        <div class="code-line">    <span class="keyword">if</span> (y >= midY) quad |= <span class="number">2</span>; <span class="comment">// North bit</span></div>
+                        <div class="code-line">    <span class="keyword">return</span> quad; <span class="comment">// 0=SW, 1=SE, 2=NW, 3=NE</span></div>
+                        <div class="code-line">}</div>
+                    </div>
+                </div>
+
+                <div class="algorithm-step" id="step3">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Particle Insertion</div>
+                    <div class="step-description">
+                        Recursively insert particles and subdivide nodes when they contain multiple particles.
+                    </div>
+                    <div class="code-display">
+                        <div class="code-line"><span class="type">void</span> <span class="function">insert</span>(<span class="type">int</span> particleIndex, ParticlesTable& particles) {</div>
+                        <div class="code-line">    <span class="keyword">if</span> (<span class="function">isLeaf</span>()) {</div>
+                        <div class="code-line">        particleIndices.<span class="function">push_back</span>(particleIndex);</div>
+                        <div class="code-line">        <span class="keyword">if</span> (particleIndices.<span class="function">size</span>() > <span class="number">1</span>) { <span class="comment">// Subdivide!</span></div>
+                        <div class="code-line">            <span class="comment">// Create 4 children nodes</span></div>
+                        <div class="code-line">            <span class="comment">// Redistribute particles to children</span></div>
+                        <div class="code-line">        }</div>
+                        <div class="code-line">    } <span class="keyword">else</span> {</div>
+                        <div class="code-line">        <span class="type">int</span> quad = <span class="function">getQuadrant</span>(particles.x[particleIndex], particles.y[particleIndex]);</div>
+                        <div class="code-line">        children[quad]-><span class="function">insert</span>(particleIndex, particles);</div>
+                        <div class="code-line">    }</div>
+                        <div class="code-line">}</div>
+                    </div>
+                </div>
+
+                <div class="algorithm-step" id="step4">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Center of Mass</div>
+                    <div class="step-description">
+                        Calculate physics quantities needed for Barnes-Hut force approximation.
+                    </div>
+                    <div class="code-display">
+                        <div class="code-line"><span class="type">void</span> <span class="function">calculateCenterOfMass</span>(ParticlesTable& particles) {</div>
+                        <div class="code-line">    <span class="keyword">if</span> (<span class="function">isLeaf</span>()) {</div>
+                        <div class="code-line">        <span class="comment">// Direct calculation from particles</span></div>
+                        <div class="code-line">        <span class="keyword">for</span> (<span class="type">int</span> idx : particleIndices) {</div>
+                        <div class="code-line">            <span class="type">float</span> mass = particles.m[idx];</div>
+                        <div class="code-line">            centerOfMass[<span class="number">0</span>] += particles.x[idx] * mass;</div>
+                        <div class="code-line">            totalMass += mass;</div>
+                        <div class="code-line">        }</div>
+                        <div class="code-line">        centerOfMass[<span class="number">0</span>] /= totalMass; <span class="comment">// Normalize</span></div>
+                        <div class="code-line">    } <span class="keyword">else</span> {</div>
+                        <div class="code-line">        <span class="comment">// Combine children's centers of mass</span></div>
+                        <div class="code-line">    }</div>
+                        <div class="code-line">}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2 class="section-title">📊 Step 3: Algorithm Analysis</h2>
+            <div class="demo-grid">
+                <div>
+                    <h3 style="color: #ffd700; margin-bottom: 20px;">🚀 Performance Benefits</h3>
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-value">O(N²)</div>
+                            <div class="stat-label">Direct N-body</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">O(N log N)</div>
+                            <div class="stat-label">Barnes-Hut</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">95%+</div>
+                            <div class="stat-label">Efficiency Gain</div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="color: #ffd700; margin: 30px 0 20px 0;">🎯 Key Insights</h3>
+                    <div class="algorithm-step">
+                        <div class="step-number">✓</div>
+                        <div class="step-title">Adaptive Subdivision</div>
+                        <div class="step-description">
+                            Tree only subdivides where particles exist, creating efficient memory usage and balanced computation.
+                        </div>
+                    </div>
+                    
+                    <div class="algorithm-step">
+                        <div class="step-number">✓</div>
+                        <div class="step-title">Hierarchical Physics</div>
+                        <div class="step-description">
+                            Center of mass calculations enable distant particle groups to be treated as single bodies.
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 style="color: #ffd700; margin-bottom: 20px;">🔬 Implementation Details</h3>
+                    <div class="code-display">
+                        <div class="code-line"><span class="comment">// Tree structure fulfillment analysis:</span></div>
+                        <div class="code-line"></div>
+                        <div class="code-line"><span class="comment">// ✅ Spatial Partitioning</span></div>
+                        <div class="code-line"><span class="keyword">struct</span> <span class="type">QuadTreeNode</span> {</div>
+                        <div class="code-line">  <span class="type">float</span> bounds[<span class="number">4</span>];           <span class="comment">// Rectangle boundaries</span></div>
+                        <div class="code-line">  <span class="type">float</span> centerOfMass[<span class="number">2</span>];     <span class="comment">// Physics data</span></div>
+                        <div class="code-line">  <span class="type">QuadTreeNode</span>* children[<span class="number">4</span>]; <span class="comment">// Tree structure</span></div>
+                        <div class="code-line">};</div>
+                        <div class="code-line"></div>
+                        <div class="code-line"><span class="comment">// ✅ Efficient Insertion: O(log N) average</span></div>
+                        <div class="code-line"><span class="comment">// ✅ Memory Management: RAII destructors</span></div>
+                        <div class="code-line"><span class="comment">// ✅ Physics Integration: Center of mass</span></div>
+                        <div class="code-line"><span class="comment">// ✅ Visualization Support: File output</span></div>
+                    </div>
+                    
+                    <div class="algorithm-step">
+                        <div class="step-number">⚠</div>
+                        <div class="step-title">Future Enhancements</div>
+                        <div class="step-description">
+                            Force calculation with opening angle θ, parallel tree construction, and dynamic load balancing.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-panel" id="infoPanel">
+        <h3 style="color: #ffd700; margin-bottom: 15px;">📋 Current Operation</h3>
+        <p id="infoPanelContent">Click on elements to see detailed information about the Barnes-Hut algorithm in action.</p>
+    </div>
+
+    <script>
+        // Global variables
+        let canvas, ctx;
+        let particles = [];
+        let treeNodes = [];
+        let currentStep = 0;
+        let animationId = null;
+        let showTree = false;
+        let showCOM = false;
+
+        class Particle {
+            constructor(x, y, mass = 1) {
+                this.x = x;
+                this.y = y;
+                this.mass = mass;
+                this.id = particles.length;
+            }
+        }
+
+        class TreeNode {
+            constructor(xmin, xmax, ymin, ymax, depth = 0) {
+                this.bounds = { xmin, xmax, ymin, ymax };
+                this.particles = [];
+                this.children = [null, null, null, null]; // SW, SE, NW, NE
+                this.centerOfMass = { x: 0, y: 0 };
+                this.totalMass = 0;
+                this.depth = depth;
+                this.isLeaf = true;
+            }
+
+            getQuadrant(x, y) {
+                const midX = (this.bounds.xmin + this.bounds.xmax) / 2;
+                const midY = (this.bounds.ymin + this.bounds.ymax) / 2;
+                let quad = 0;
+                if (x >= midX) quad |= 1; // East
+                if (y >= midY) quad |= 2; // North
+                return quad;
+            }
+
+            insert(particle) {
+                if (this.isLeaf) {
+                    this.particles.push(particle);
+                    
+                    if (this.particles.length > 1) {
+                        this.subdivide();
+                    }
+                } else {
+                    const quad = this.getQuadrant(particle.x, particle.y);
+                    this.children[quad].insert(particle);
+                }
+            }
+
+            subdivide() {
+                const midX = (this.bounds.xmin + this.bounds.xmax) / 2;
+                const midY = (this.bounds.ymin + this.bounds.ymax) / 2;
+                
+                // Create children: SW, SE, NW, NE
+                this.children[0] = new TreeNode(this.bounds.xmin, midX, this.bounds.ymin, midY, this.depth + 1);
+                this.children[1] = new TreeNode(midX, this.bounds.xmax, this.bounds.ymin, midY, this.depth + 1);
+                this.children[2] = new TreeNode(this.bounds.xmin, midX, midY, this.bounds.ymax, this.depth + 1);
+                this.children[3] = new TreeNode(midX, this.bounds.xmax, midY, this.bounds.ymax, this.depth + 1);
+                
+                // Redistribute particles
+                for (const particle of this.particles) {
+                    const quad = this.getQuadrant(particle.x, particle.y);
+                    this.children[quad].insert(particle);
+                }
+                
+                this.particles = [];
+                this.isLeaf = false;
+            }
+
+            calculateCenterOfMass() {
+                if (this.isLeaf) {
+                    let totalMass = 0;
+                    let comX = 0, comY = 0;
+                    
+                    for (const particle of this.particles) {
+                        comX += particle.x * particle.mass;
+                        comY += particle.y * particle.mass;
+                        totalMass += particle.mass;
+                    }
+                    
+                    if (totalMass > 0) {
+                        this.centerOfMass.x = comX / totalMass;
+                        this.centerOfMass.y = comY / totalMass;
+                        this.totalMass = totalMass;
+                    }
+                } else {
+                    let totalMass = 0;
+                    let comX = 0, comY = 0;
+                    
+                    for (const child of this.children) {
+                        if (child) {
+                            child.calculateCenterOfMass();
+                            const mass = child.totalMass;
+                            comX += child.centerOfMass.x * mass;
+                            comY += child.centerOfMass.y * mass;
+                            totalMass += mass;
+                        }
+                    }
+                    
+                    if (totalMass > 0) {
+                        this.centerOfMass.x = comX / totalMass;
+                        this.centerOfMass.y = comY / totalMass;
+                        this.totalMass = totalMass;
+                    }
+                }
+            }
+        }
+
+        function init() {
+            canvas = document.getElementById('mainCanvas');
+            ctx = canvas.getContext('2d');
+            
+            canvas.addEventListener('click', handleCanvasClick);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            
+            render();
+            updateStats();
+        }
+
+        function handleCanvasClick(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+            
+            addParticle(x, y);
+            updateStep('Particle Added', `Added particle at (${x.toFixed(1)}, ${y.toFixed(1)})`);
+        }
+
+        function handleMouseMove(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+            
+            showInfoPanel(`Coordinates: (${x.toFixed(1)}, ${y.toFixed(1)})`);
+        }
+
+        function addParticle(x, y, mass = Math.random() * 0.8 + 0.2) {
+            particles.push(new Particle(x, y, mass));
+            updateStats();
+            render();
+        }
+
+        function addRandomParticles(count) {
+            for (let i = 0; i < count; i++) {
+                const x = Math.random() * (canvas.width - 40) + 20;
+                const y = Math.random() * (canvas.height - 40) + 20;
+                addParticle(x, y);
+            }
+            updateStep('Random Particles', `Added ${count} random particles`);
+        }
+
+        function clearCanvas() {
+            particles = [];
+            treeNodes = [];
+            showTree = false;
+            showCOM = false;
+            updateStats();
+            render();
+            updateStep('Canvas Cleared', 'Ready to add new particles');
+        }
+
+        function buildTreeAnimation() {
+            if (particles.length === 0) {
+                updateStep('No Particles', 'Add some particles first!');
+                return;
+            }
+
+            showTree = true;
+            const rootNode = new TreeNode(0, canvas.width, 0, canvas.height);
+            
+            let insertIndex = 0;
+            const insertInterval = setInterval(() => {
+                if (insertIndex < particles.length) {
+                    rootNode.insert(particles[insertIndex]);
+                    insertIndex++;
+                    
+                    // Collect all nodes for rendering
+                    treeNodes = [];
+                    collectNodes(rootNode, treeNodes);
+                    
+                    render();
+                    updateStep(`Building Tree`, `Inserted ${insertIndex}/${particles.length} particles`);
+                    updateProgress(insertIndex / particles.length * 100);
+                } else {
+                    clearInterval(insertInterval);
+                    rootNode.calculateCenterOfMass();
+                    collectNodes(rootNode, treeNodes);
+                    render();
+                    updateStep('Tree Complete', `Built tree with ${treeNodes.length} nodes, max depth ${getMaxDepth(rootNode)}`);
+                    updateStats();
+                }
+            }, 200);
+        }
+
+        function collectNodes(node, nodesList) {
+            if (node) {
+                nodesList.push(node);
+                for (const child of node.children) {
+                    if (child) {
+                        collectNodes(child, nodesList);
+                    }
+                }
+            }
+        }
+
+        function getMaxDepth(node) {
+            if (!node) return 0;
+            let maxDepth = node.depth;
+            for (const child of node.children) {
+                if (child) {
+                    maxDepth = Math.max(maxDepth, getMaxDepth(child));
+                }
+            }
+            return maxDepth;
+        }
+
+        function showCentersOfMass() {
+            showCOM = !showCOM;
+            render();
+            updateStep('Centers of Mass', showCOM ? 'Showing centers of mass' : 'Hidden centers of mass');
+        }
+
+        function stepByStepDemo() {
+            clearCanvas();
+            
+            // Add demo particles
+            const demoParticles = [
+                { x: 100, y: 100 },
+                { x: 150, y: 120 },
+                { x: 300, y: 200 },
+                { x: 350, y: 180 },
+                { x: 400, y: 300 }
+            ];
+            
+            let step = 0;
+            const stepInterval = setInterval(() => {
+                if (step < demoParticles.length) {
+                    addParticle(demoParticles[step].x, demoParticles[step].y);
+                    highlightAlgorithmStep(step + 1);
+                    step++;
+                } else {
+                    clearInterval(stepInterval);
+                    setTimeout(() => {
+                        buildTreeAnimation();
+                    }, 1000);
+                }
+            }, 1500);
+        }
+
+        function highlightAlgorithmStep(stepNum) {
+            document.querySelectorAll('.algorithm-step').forEach(step => {
+                step.classList.remove('active');
+            });
+            
+            const stepElement = document.getElementById(`step${stepNum}`);
+            if (stepElement) {
+                stepElement.classList.add('active');
+                stepElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw tree boundaries
+            if (showTree && treeNodes.length > 0) {
+                ctx.save();
+                ctx.globalAlpha = 0.7;
+                
+                treeNodes.forEach(node => {
+                    ctx.strokeStyle = `hsl(${node.depth * 60}, 70%, 60%)`;
+                    ctx.lineWidth = Math.max(1, 3 - node.depth * 0.5);
+                    ctx.setLineDash([5, 5]);
+                    
+                    ctx.strokeRect(
+                        node.bounds.xmin,
+                        node.bounds.ymin,
+                        node.bounds.xmax - node.bounds.xmin,
+                        node.bounds.ymax - node.bounds.ymin
+                    );
+                });
+                
+                ctx.restore();
+            }
+            
+            // Draw centers of mass
+            if (showCOM && treeNodes.length > 0) {
+                ctx.save();
+                
+                treeNodes.forEach(node => {
+                    if (node.totalMass > 0) {
+                        ctx.fillStyle = '#00ff88';
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        
+                        const radius = Math.max(3, Math.min(15, node.totalMass * 5));
+                        
+                        ctx.beginPath();
+                        ctx.arc(node.centerOfMass.x, node.centerOfMass.y, radius, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                        
+                        // Label with mass
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '10px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(
+                            node.totalMass.toFixed(1),
+                            node.centerOfMass.x,
+                            node.centerOfMass.y - radius - 5
+                        );
+                    }
+                });
+                
+                ctx.restore();
+            }
+            
+            // Draw particles
+            particles.forEach(particle => {
+                ctx.fillStyle = '#ff6b35';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                
+                const radius = Math.max(3, particle.mass * 8);
+                
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('particleCount').textContent = particles.length;
+            document.getElementById('nodeCount').textContent = treeNodes.length;
+            
+            if (treeNodes.length > 0) {
+                const maxDepth = Math.max(...treeNodes.map(node => node.depth));
+                document.getElementById('treeDepth').textContent = maxDepth;
+            } else {
+                document.getElementById('treeDepth').textContent = '0';
+            }
+        }
+
+        function updateStep(title, description) {
+            document.getElementById('stepTitle').textContent = title;
+            document.getElementById('stepDescription').textContent = description;
+        }
+
+        function updateProgress(percentage) {
+            document.getElementById('progressFill').style.width = percentage + '%';
+        }
+
+        function showInfoPanel(content) {
+            const panel = document.getElementById('infoPanel');
+            const contentEl = document.getElementById('infoPanelContent');
+            
+            contentEl.textContent = content;
+            panel.classList.add('show');
+            
+            setTimeout(() => {
+                panel.classList.remove('show');
+            }, 2000);
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

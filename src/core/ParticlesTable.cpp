@@ -217,3 +217,366 @@ void ParticlesTable::kick(float scale){
 void ParticlesTable::drift(float scale){
     // NEED IMPLEMENT
 }
+
+// Constructor implementations
+ParticlesTable::QuadTreeNode::QuadTreeNode(float xmin, float xmax, float ymin, float ymax) 
+    : totalMass(0.0f) {
+    bounds[0] = xmin; bounds[1] = xmax; bounds[2] = ymin; bounds[3] = ymax;
+    centerOfMass[0] = centerOfMass[1] = 0.0f;
+    std::fill(children, children + 4, nullptr);
+}
+
+ParticlesTable::QuadTreeNode::~QuadTreeNode() {
+    for (int i = 0; i < 4; i++) {
+        delete children[i];
+    }
+}
+
+ParticlesTable::OctTreeNode::OctTreeNode(float xmin, float xmax, float ymin, float ymax, float zmin, float zmax)
+    : totalMass(0.0f) {
+    bounds[0] = xmin; bounds[1] = xmax; bounds[2] = ymin; 
+    bounds[3] = ymax; bounds[4] = zmin; bounds[5] = zmax;
+    centerOfMass[0] = centerOfMass[1] = centerOfMass[2] = 0.0f;
+    std::fill(children, children + 8, nullptr);
+}
+
+ParticlesTable::OctTreeNode::~OctTreeNode() {
+    for (int i = 0; i < 8; i++) {
+        delete children[i];
+    }
+}
+
+// Quadrant/Octant determination
+int ParticlesTable::QuadTreeNode::getQuadrant(float x, float y) const {
+    float midX = (bounds[0] + bounds[1]) / 2;
+    float midY = (bounds[2] + bounds[3]) / 2;
+    
+    int quad = 0;
+    if (x >= midX) quad |= 1;  // East
+    if (y >= midY) quad |= 2;  // North
+    return quad; // 0=SW, 1=SE, 2=NW, 3=NE
+}
+
+int ParticlesTable::OctTreeNode::getOctant(float x, float y, float z) const {
+    float midX = (bounds[0] + bounds[1]) / 2;
+    float midY = (bounds[2] + bounds[3]) / 2; 
+    float midZ = (bounds[4] + bounds[5]) / 2;
+    
+    int oct = 0;
+    if (x >= midX) oct |= 1;  // East
+    if (y >= midY) oct |= 2;  // North  
+    if (z >= midZ) oct |= 4;  // Up
+    return oct;
+}
+
+// Main tree building methods
+void ParticlesTable::buildQuadTree() {
+    // Clear existing tree
+    if (quadTreeRoot) {
+        clearQuadTree(quadTreeRoot);
+    }
+    
+    // Find bounding box of all particles
+    float xmin = x[0], xmax = x[0], ymin = y[0], ymax = y[0];
+    for (int i = 1; i < N; i++) {
+        if (x[i] < xmin) xmin = x[i];
+        if (x[i] > xmax) xmax = x[i];
+        if (y[i] < ymin) ymin = y[i]; 
+        if (y[i] > ymax) ymax = y[i];
+    }
+    
+    // Add small padding
+    float padding = 0.1f;
+    xmin -= padding; xmax += padding;
+    ymin -= padding; ymax += padding;
+    
+    // Create root node
+    quadTreeRoot = new QuadTreeNode(xmin, xmax, ymin, ymax);
+    
+    // Insert all particles
+    for (int i = 0; i < N; i++) {
+        quadTreeRoot->insert(i, *this);
+    }
+    
+    // Calculate centers of mass
+    quadTreeRoot->calculateCenterOfMass(*this);
+    useQuadTree = true;
+}
+
+void ParticlesTable::buildOctTree() {
+    // Clear existing tree
+    if (octTreeRoot) {
+        clearOctTree(octTreeRoot);
+    }
+    
+    // Find bounding box of all particles
+    float xmin = x[0], xmax = x[0], ymin = y[0], ymax = y[0], zmin = z[0], zmax = z[0];
+    for (int i = 1; i < N; i++) {
+        if (x[i] < xmin) xmin = x[i];
+        if (x[i] > xmax) xmax = x[i];
+        if (y[i] < ymin) ymin = y[i];
+        if (y[i] > ymax) ymax = y[i];
+        if (z[i] < zmin) zmin = z[i];
+        if (z[i] > zmax) zmax = z[i];
+    }
+    
+    // Add small padding
+    float padding = 0.1f;
+    xmin -= padding; xmax += padding;
+    ymin -= padding; ymax += padding;
+    zmin -= padding; zmax += padding;
+    
+    // Create root node
+    octTreeRoot = new OctTreeNode(xmin, xmax, ymin, ymax, zmin, zmax);
+    
+    // Insert all particles
+    for (int i = 0; i < N; i++) {
+        octTreeRoot->insert(i, *this);
+    }
+    
+    // Calculate centers of mass
+    octTreeRoot->calculateCenterOfMass(*this);
+    useQuadTree = false;
+}
+
+// Insert methods (simplified - just add to appropriate leaf)
+void ParticlesTable::QuadTreeNode::insert(int particleIndex, ParticlesTable& particles) {
+    if (isLeaf()) {
+        particleIndices.push_back(particleIndex);
+        
+        // If this leaf now has more than 1 particle, subdivide
+        if (particleIndices.size() > 1) {
+            // Create children
+            float midX = (bounds[0] + bounds[1]) / 2;
+            float midY = (bounds[2] + bounds[3]) / 2;
+            
+            children[0] = new QuadTreeNode(bounds[0], midX, bounds[2], midY); // SW
+            children[1] = new QuadTreeNode(midX, bounds[1], bounds[2], midY); // SE
+            children[2] = new QuadTreeNode(bounds[0], midX, midY, bounds[3]); // NW  
+            children[3] = new QuadTreeNode(midX, bounds[1], midY, bounds[3]); // NE
+            
+            // Redistribute particles to children
+            for (int idx : particleIndices) {
+                int quad = getQuadrant(particles.x[idx], particles.y[idx]);
+                children[quad]->particleIndices.push_back(idx);
+            }
+            particleIndices.clear();
+        }
+    } else {
+        // Internal node - pass to appropriate child
+        int quad = getQuadrant(particles.x[particleIndex], particles.y[particleIndex]);
+        children[quad]->insert(particleIndex, particles);
+    }
+}
+
+void ParticlesTable::OctTreeNode::insert(int particleIndex, ParticlesTable& particles) {
+    if (isLeaf()) {
+        particleIndices.push_back(particleIndex);
+        
+        // If this leaf now has more than 1 particle, subdivide
+        if (particleIndices.size() > 1) {
+            // Create children
+            float midX = (bounds[0] + bounds[1]) / 2;
+            float midY = (bounds[2] + bounds[3]) / 2;
+            float midZ = (bounds[4] + bounds[5]) / 2;
+            
+            for (int i = 0; i < 8; i++) {
+                float xmin = (i & 1) ? midX : bounds[0];
+                float xmax = (i & 1) ? bounds[1] : midX;
+                float ymin = (i & 2) ? midY : bounds[2]; 
+                float ymax = (i & 2) ? bounds[3] : midY;
+                float zmin = (i & 4) ? midZ : bounds[4];
+                float zmax = (i & 4) ? bounds[5] : midZ;
+                
+                children[i] = new OctTreeNode(xmin, xmax, ymin, ymax, zmin, zmax);
+            }
+            
+            // Redistribute particles to children
+            for (int idx : particleIndices) {
+                int oct = getOctant(particles.x[idx], particles.y[idx], particles.z[idx]);
+                children[oct]->particleIndices.push_back(idx);
+            }
+            particleIndices.clear();
+        }
+    } else {
+        // Internal node - pass to appropriate child
+        int oct = getOctant(particles.x[particleIndex], particles.y[particleIndex], particles.z[particleIndex]);
+        children[oct]->insert(particleIndex, particles);
+    }
+}
+
+// Center of mass calculation
+void ParticlesTable::QuadTreeNode::calculateCenterOfMass(ParticlesTable& particles) {
+    if (isLeaf()) {
+        totalMass = 0.0f;
+        centerOfMass[0] = centerOfMass[1] = 0.0f;
+        
+        for (int idx : particleIndices) {
+            float mass = particles.m[idx];
+            centerOfMass[0] += particles.x[idx] * mass;
+            centerOfMass[1] += particles.y[idx] * mass;
+            totalMass += mass;
+        }
+        
+        if (totalMass > 0) {
+            centerOfMass[0] /= totalMass;
+            centerOfMass[1] /= totalMass;
+        }
+    } else {
+        totalMass = 0.0f;
+        centerOfMass[0] = centerOfMass[1] = 0.0f;
+        
+        for (int i = 0; i < 4; i++) {
+            if (children[i]) {
+                children[i]->calculateCenterOfMass(particles);
+                float mass = children[i]->totalMass;
+                centerOfMass[0] += children[i]->centerOfMass[0] * mass;
+                centerOfMass[1] += children[i]->centerOfMass[1] * mass;
+                totalMass += mass;
+            }
+        }
+        
+        if (totalMass > 0) {
+            centerOfMass[0] /= totalMass;
+            centerOfMass[1] /= totalMass;
+        }
+    }
+}
+
+void ParticlesTable::OctTreeNode::calculateCenterOfMass(ParticlesTable& particles) {
+    if (isLeaf()) {
+        totalMass = 0.0f;
+        centerOfMass[0] = centerOfMass[1] = centerOfMass[2] = 0.0f;
+        
+        for (int idx : particleIndices) {
+            float mass = particles.m[idx];
+            centerOfMass[0] += particles.x[idx] * mass;
+            centerOfMass[1] += particles.y[idx] * mass;
+            centerOfMass[2] += particles.z[idx] * mass;
+            totalMass += mass;
+        }
+        
+        if (totalMass > 0) {
+            centerOfMass[0] /= totalMass;
+            centerOfMass[1] /= totalMass;
+            centerOfMass[2] /= totalMass;
+        }
+    } else {
+        totalMass = 0.0f;
+        centerOfMass[0] = centerOfMass[1] = centerOfMass[2] = 0.0f;
+        
+        for (int i = 0; i < 8; i++) {
+            if (children[i]) {
+                children[i]->calculateCenterOfMass(particles);
+                float mass = children[i]->totalMass;
+                centerOfMass[0] += children[i]->centerOfMass[0] * mass;
+                centerOfMass[1] += children[i]->centerOfMass[1] * mass;
+                centerOfMass[2] += children[i]->centerOfMass[2] * mass;
+                totalMass += mass;
+            }
+        }
+        
+        if (totalMass > 0) {
+            centerOfMass[0] /= totalMass;
+            centerOfMass[1] /= totalMass;
+            centerOfMass[2] /= totalMass;
+        }
+    }
+}
+
+void ParticlesTable::setBHTreeTheta(float theta) {
+    bhTreeTheta = theta;
+}
+
+// Tree saving methods
+void ParticlesTable::saveQuadTreeToFile(const std::string& filename) const {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open " << filename << " for writing\n";
+        return;
+    }
+    
+    if (quadTreeRoot) {
+        file << "QUADTREE\n";
+        file << "# Format: depth xmin xmax ymin ymax centerX centerY totalMass numParticles [particleIndices...]\n";
+        saveQuadTreeNode(file, quadTreeRoot, 0);
+    } else {
+        std::cerr << "No quadtree built. Call buildQuadTree() first.\n";
+    }
+    
+    file.close();
+}
+
+void ParticlesTable::saveOctTreeToFile(const std::string& filename) const {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open " << filename << " for writing\n";
+        return;
+    }
+    
+    if (octTreeRoot) {
+        file << "OCTREE\n";
+        file << "# Format: depth xmin xmax ymin ymax zmin zmax centerX centerY centerZ totalMass numParticles [particleIndices...]\n";
+        saveOctTreeNode(file, octTreeRoot, 0);
+    } else {
+        std::cerr << "No octree built. Call buildOctTree() first.\n";
+    }
+    
+    file.close();
+}
+
+void ParticlesTable::saveQuadTreeNode(std::ofstream& file, QuadTreeNode* node, int depth) const {
+    if (!node) return;
+    
+    file << depth << " "
+         << node->bounds[0] << " " << node->bounds[1] << " "  // xmin xmax
+         << node->bounds[2] << " " << node->bounds[3] << " "  // ymin ymax
+         << node->centerOfMass[0] << " " << node->centerOfMass[1] << " "  // center
+         << node->totalMass << " "
+         << node->particleIndices.size();
+    
+    for (int idx : node->particleIndices) {
+        file << " " << idx;
+    }
+    file << "\n";
+    
+    // Recursively save children
+    for (int i = 0; i < 4; i++) {
+        if (node->children[i]) {
+            saveQuadTreeNode(file, node->children[i], depth + 1);
+        }
+    }
+}
+
+void ParticlesTable::saveOctTreeNode(std::ofstream& file, OctTreeNode* node, int depth) const {
+    if (!node) return;
+    
+    file << depth << " "
+         << node->bounds[0] << " " << node->bounds[1] << " "  // xmin xmax
+         << node->bounds[2] << " " << node->bounds[3] << " "  // ymin ymax
+         << node->bounds[4] << " " << node->bounds[5] << " "  // zmin zmax
+         << node->centerOfMass[0] << " " << node->centerOfMass[1] << " " << node->centerOfMass[2] << " "  // center
+         << node->totalMass << " "
+         << node->particleIndices.size();
+    
+    for (int idx : node->particleIndices) {
+        file << " " << idx;
+    }
+    file << "\n";
+    
+    // Recursively save children
+    for (int i = 0; i < 8; i++) {
+        if (node->children[i]) {
+            saveOctTreeNode(file, node->children[i], depth + 1);
+        }
+    }
+}
+
+// Cleanup methods
+void ParticlesTable::clearQuadTree(QuadTreeNode* node) {
+    delete node;  // Destructor handles children recursively
+}
+
+void ParticlesTable::clearOctTree(OctTreeNode* node) {
+    delete node;  // Destructor handles children recursively
+}
