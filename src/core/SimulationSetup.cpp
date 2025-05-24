@@ -1,5 +1,6 @@
 #include <string>
 #include <iostream>
+#include <regex>
 #include "UnitsTable.hpp"
 #include "SimulationSetup.hpp"
 #include "InitialConditionSetup.hpp"
@@ -57,6 +58,8 @@ void SimulationSetup::generate_parameters_file(const ParticlesSetup& setup, cons
     _write_toml_kvc(fout, "input_file", input_file, "File for reading (Update whenever extract new dumpfile)");
     _write_toml_kvc(fout, "tmax", 1.0e6 * dtref, "Max simulation time (IN CODE UNIT)");
     _write_toml_kvc(fout, "dt_substepsmax", 1, " Max number of substeps per time step (Current No used)");
+    _write_toml_kvc(fout, "num_per_dump", 10, "Dump output data per given timestep.");
+    _write_toml_kvc(fout, "a_mode", 0, "Mode for calculate acceleration (0 => direct N-body, 1 => BHTree)");
 
     fout << "[CPUSetup]\n";
     _write_toml_kvc(fout, "OMP_NUM_THREAD", 1, "Number of OpenMP threads");
@@ -78,6 +81,8 @@ void SimulationSetup::make_parameters_file(){
     _write_toml_kvc(fout, "input_file", input_file, "File for reading (Update whenever extract new dumpfile)");
     _write_toml_kvc(fout, "tmax", tmax, "Max simulation time (IN CODE UNIT)");
     _write_toml_kvc(fout, "dt_substepsmax", dt_substepsmax, " Max number of substeps per time step (Current No used)");
+    _write_toml_kvc(fout, "num_per_dump", num_per_dump, "Dump output data per given timestep.");
+    _write_toml_kvc(fout, "a_mode", a_mode, "Mode for calculate acceleration (0 => direct N-body, 1 => BHTree)");
 
     fout << "[CPUSetup]\n";
     _write_toml_kvc(fout, "OMP_NUM_THREAD", OMP_NUM_THREAD, "Number of OpenMP threads");
@@ -100,7 +105,19 @@ void SimulationSetup::_read_params_toml(const std::string& paramsfilepath){
     input_file               = config["SimulationParameters"]["input_file"].value_or(input_file);
     tmax                     = config["SimulationParameters"]["tmax"].value_or(tmax);
     dt_substepsmax           = config["SimulationParameters"]["dt_substepsmax"].value_or(dt_substepsmax);
+    num_per_dump             = config["SimulationParameters"]["num_per_dump"].value_or(num_per_dump);
+    a_mode                   = config["SimulationParameters"]["a_mode"].value_or(a_mode);
     OMP_NUM_THREAD           = config["CPUSetup"]["OMP_NUM_THREAD"].value_or(OMP_NUM_THREAD);
     BLOCK_SIZE               = config["GPUSetup"]["BLOCK_SIZE"].value_or(BLOCK_SIZE);
 
+}
+
+int SimulationSetup::extract_current_index() {
+    std::regex pattern(R"(_(\d+)\.h5$)");
+    std::smatch match;
+    if (std::regex_search(input_file, match, pattern)) {
+        return std::stoi(match[1]);
+    } else {
+        throw std::runtime_error("Filename format not matched: " + input_file);
+    }
 }

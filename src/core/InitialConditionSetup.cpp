@@ -1,6 +1,8 @@
 #include <random>
 #include <chrono>
 #include <functional>
+#include <sstream>
+#include <iomanip>
 #include "InitialConditionSetup.hpp"
 #include "ParticlesSetup.hpp"
 #include "UnitsTable.hpp"
@@ -34,7 +36,18 @@ ParticlesTable setup_initial_condition(const ParticlesSetup& setup, UnitsTable u
         float mi = samplers.msampler();
         pt.m[i] = mi;
         Mtot += mi;
+
     }
     pt.Mtot = Mtot;
+
+    pt.calculate_h();
+    pt.calculate_dt();
+
     return pt;
+}
+
+std::string format_index(int index, int width) {
+    std::ostringstream oss;
+    oss << std::setw(width) << std::setfill('0') << index;
+    return oss.str();
 }

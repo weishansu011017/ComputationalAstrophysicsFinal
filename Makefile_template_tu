@@ -30,18 +30,24 @@ TESTS := $(basename $(notdir $(wildcard $(TEST_DIR)/*.cpp)))
 #=== Target of testfiles ===#
 TESTSTARGETS := $(addprefix $(BUILD_DIR)/test/, $(TESTS))
 
+#=== Target of simulation.cpp ===#
+MAINTARGET := simulation
+MAIN_SRC   := $(MAIN_DIR)/simulation.cpp $(wildcard $(CORE_DIR)/*.cpp)
+
 #=== Target of setup.cpp ===#
 SETUPTARGET := setup
 SETUP_SRC   := $(MAIN_DIR)/setup.cpp $(wildcard $(CORE_DIR)/*.cpp)
 
-#=== Default make ===#
-all:
+#=== Default Simulation ===#
+simulation:
+$(MAINTARGET): $(MAIN_SRC)
 	@echo "### Compiler        : $(CXX)"
 	@echo "### External libs   : $(EXTERNAL_LIBS)"
 	@echo "Tip: If your dependencies are not installed in system paths,"
 	@echo "        you may need to set:"
 	@echo "        export PKG_CONFIG_PATH=/your/custom/path/lib/pkgconfig"
-	@echo "Default build: main simulation target is not yet implemented."
+	@echo "                   "
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 #=== Default Initial Condition constructor ===#
 setup:

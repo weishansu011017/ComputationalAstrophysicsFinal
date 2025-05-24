@@ -13,6 +13,8 @@ public:
     std::string input_file;                                                 // File for reading (Update whenever extract new dumpfile)
     float tmax;                                                             // Max simulation time (IN CODE UNIT)
     int dt_substepsmax = 1;                                                 // Max number of substeps per time step (Current No used)
+    int num_per_dump = 10;                                                  // Dump output data per given timestep.
+    int a_mode = 0;                                                         // Mode for calculate acceleration (0 => direct N-body, 1 => BHTree)
 
     // CPU setup
     int OMP_NUM_THREAD = 1;                                                 // Number of OpenMP threads                                
@@ -52,6 +54,16 @@ public:
     */
    void make_parameters_file();
 
+   /*
+        int extract_current_index()
+    Extract the current timestep from "paramspath"
+
+    ## Output
+        - int : Current index of stepping.
+    */
+   int extract_current_index();
+
+
 protected:
 
     template <typename T>
@@ -65,7 +77,7 @@ protected:
     (Internal Method) Read a TOML parameters file for simulation parameters
 
     ## Input
-        - string paramsfilepath: Name of input
+        - std::string paramsfilepath: Name of input
     */
     void _read_params_toml(const std::string& paramsfilepath);
 };
