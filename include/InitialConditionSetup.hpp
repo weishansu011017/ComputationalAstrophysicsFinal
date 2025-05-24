@@ -3,6 +3,7 @@
 #include "UnitsTable.hpp"
 #include "ParticlesTable.hpp"
 
+
 /*
     ParticlesTable setup_initial_condition(ParticlesSetup setup, UnitsTable unit)
 Initilizing the initial condition of particles from `ParticlesSetup`
@@ -16,14 +17,16 @@ Initilizing the initial condition of particles from `ParticlesSetup`
 */
 ParticlesTable setup_initial_condition(const ParticlesSetup& setup, UnitsTable unit);
 
-
 /*
-    void generate_parameters_file(const ParticlesSetup& setup)
-Generate a parameters file for simulation
+    std::string format_index(int index, int width = 5)
+
+Format an integer into a zero-padded string, e.g., 42 → "00042".
 
 ## Input 
-    - ParticlesSetup setup: The parameter of setup 
+    - int index : The integer to be formatted
+    - int width : Total width of the resulting string (default = 5)
+
+## Output
+    - std::string : Zero-padded string representation of the input integer
 */
-void generate_parameters_file(const ParticlesSetup& setup);
-
-
+std::string format_index(int index, int width = 5);

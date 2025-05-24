@@ -1,5 +1,6 @@
 #include <math.h>
 #include <vector>
+#include <numeric>
 #include "MathematicsTools.hpp"
 
 std::array<float, 6> sph2cart(std::array<float, 6> sph_coor){

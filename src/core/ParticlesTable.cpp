@@ -202,6 +202,32 @@ ParticlesTable ParticlesTable::read_particles_table(const std::string& filename)
     return pt;
 }
 
+void ParticlesTable::_generate_pidx2idx(){
+    for (size_t i = 0; i < particle_index.size(); ++i) {
+        _pidx2idx[particle_index[i]] = i;
+    }
+}
+
+bool ParticlesTable::is_active(uint32_t pindex){
+    auto it = _pidx2idx.find(pindex);
+    if (it == _pidx2idx.end()) return false;
+    return h[it->second] > 0.0;
+}
+
+void ParticlesTable::calculate_h(){
+    // NEED IMPLEMENT
+    for (int i = 0; i < N; ++i) {
+        h[i] = 0.1;
+    }
+}
+
+void ParticlesTable::calculate_dt(){
+    // NEED IMPLEMENT
+    for (int i = 0; i < N; ++i) {
+        dt[i] = 0.1;
+    }
+}
+
 void ParticlesTable::calculate_a_dirnbody(){
     // NEED IMPLEMENT
 }
