@@ -72,6 +72,8 @@ int main(int argc, char** argv){
             std::string output = pt.SimulationTag + "_" + timeindex + ".h5";
             std::cout << "Dump: "<< output << std::endl;
             pt.extract_particles_table(output);
+            simsetup.input_file = output;
+            simsetup.make_parameters_file();
         }
     }
     std::cout << "============================== End simulation ==============================" << std::endl;
