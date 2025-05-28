@@ -156,8 +156,6 @@ $RECYCLE.BIN/
 *.log
 *.out
 *.err
-core
-core.*
 
 # Package management
 # =============================================================================
@@ -185,7 +183,9 @@ _templates/
 .vscode
 ./temp/*
 Makefile
-
+simulation
+*.in
+*.setup
 
 # Custom project ignores
 # =============================================================================
