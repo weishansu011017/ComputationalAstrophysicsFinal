@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <hdf5.h>
 #include <iostream>
+#include <omp.h>
 #include "UnitsTable.hpp"
 #include "ParticlesTable.hpp"
 
@@ -202,18 +203,6 @@ ParticlesTable ParticlesTable::read_particles_table(const std::string& filename)
     return pt;
 }
 
-void ParticlesTable::_generate_pidx2idx(){
-    for (size_t i = 0; i < particle_index.size(); ++i) {
-        _pidx2idx[particle_index[i]] = i;
-    }
-}
-
-bool ParticlesTable::is_active(uint32_t pindex){
-    auto it = _pidx2idx.find(pindex);
-    if (it == _pidx2idx.end()) return false;
-    return h[it->second] > 0.0;
-}
-
 void ParticlesTable::calculate_h(){
     // NEED IMPLEMENT
     for (int i = 0; i < N; ++i) {
@@ -236,10 +225,30 @@ void ParticlesTable::calculate_a_BHtree(){
     // NEED IMPLEMENT
 }
 
-void ParticlesTable::kick(float scale){
-    // NEED IMPLEMENT
+
+void ParticlesTable::kick(float scale) {
+    #pragma omp parallel for
+    for (int i = 0; i < N; ++i) {
+        if (h[i] > 0.0f) { 
+            vx[i] += scale * _ax[i] * dt[i];
+            vy[i] += scale * _ay[i] * dt[i];
+            vz[i] += scale * _az[i] * dt[i];
+        }
+    }
 }
 
+
 void ParticlesTable::drift(float scale){
+    #pragma omp parallel for
+    for (int i = 0; i < N; ++i) {
+        if (h[i] > 0.0f) { 
+            x[i] += scale * vx[i] * dt[i];
+            y[i] += scale * vy[i] * dt[i];
+            z[i] += scale * vz[i] * dt[i];
+        }
+    }
+}
+
+void ParticlesTable::particles_validation(){
     // NEED IMPLEMENT
 }

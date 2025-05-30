@@ -61,8 +61,6 @@ public:
         std::fill(_ax.begin(), _ax.end(), 0.0f);
         std::fill(_ay.begin(), _ay.end(), 0.0f);
         std::fill(_az.begin(), _az.end(), 0.0f);
-        
-        _generate_pidx2idx();
     }
     // Destructor
     ~ParticlesTable() = default;
@@ -142,26 +140,14 @@ public:
     void drift(float scale = 1.0);
 
     /*
-        bool is_active(uint32_t pindex);
+        void particles_validation();
         
-    Check whether the particle at `particle_index == pindex` is active (i.e., its smoothing length h >= 0).
+    Performs sanity checks and aggressive validation on particle data.
 
-    ## Input
-        - uint32_t pindex: Index of the particle in the particle table.
-
-    ## Output
-        - bool: `true` if the particle is active (h >= 0), `false` otherwise.
-    */
-    bool is_active(uint32_t pindex);
+    */        
+    void particles_validation();
 
 protected:
-
-    // Mapping for particles_index -> particles
-    std::unordered_map<uint32_t, size_t> _pidx2idx;
-    // generate the map
-    void _generate_pidx2idx();
-
-
     // Allocating vector
     virtual void _resize_vectors(std::size_t N) {
         particle_index.resize(N);

@@ -22,6 +22,7 @@ public:
     float udist = 3.08567758128e18;
     float umass = 1.989e33;
     // Other parameters
+    float softfactor = 0.02;
 
     // Destructor
     virtual ~ParticlesSetup() = default;
@@ -31,10 +32,12 @@ public:
 
     // Other variable
     std::string SimulationTag = "";
-
+    float simulation_scale; 
 
 private:
 protected:
+    
+
     template <typename T>
     void _write_toml_kvc(std::ofstream& fout, const std::string& key, const T& value, const std::string& comment,
                                 int key_width = 14, int eq_pos = 18, int val_pos = 38, int comment_pos = 50) const; 
@@ -96,7 +99,6 @@ public:
         std::uniform_real_distribution<float> distvx(vxmin, vxmax);
         std::uniform_real_distribution<float> distvy(vymin, vymax);
         std::uniform_real_distribution<float> distvz(vzmin, vzmax);
-        std::uniform_real_distribution<float> distm(mmin, mmax);
         
         sampler.coorsampler = [=]() mutable -> std::array<float, 6> {
             return {
@@ -108,7 +110,16 @@ public:
                 distvz(rng)
             };
         };    
-        sampler.msampler = [=]() mutable { return distm(rng); };
+
+        // Mass sampler
+        if (std::abs(mmax - mmin) < 1e-6f) {
+            float fixed_mass = mmin;
+            sampler.msampler = [=]() { return fixed_mass; };
+        } else {
+            std::uniform_real_distribution<float> distm(mmin, mmax);
+            sampler.msampler = [=]() mutable { return distm(rng); };
+        }
+
 
         return sampler;
     }
@@ -191,7 +202,6 @@ class ParticlesSetupIsotropic : public ParticlesSetup{
             std::uniform_real_distribution<float> distvr(vrmin, vrmax);
             std::uniform_real_distribution<float> distvphi(vphimin, vphimax);
             std::uniform_real_distribution<float> distvtheta(vthetamin, vthetamax);
-            std::uniform_real_distribution<float> distm(mmin, mmax);
 
             // rsampler
             std::uniform_real_distribution<float> urand(0.0f,1.0f);
@@ -228,7 +238,15 @@ class ParticlesSetupIsotropic : public ParticlesSetup{
                 return cart_coor;
             };
             sampler.coorsampler = xyz_sampler;
-            sampler.msampler = [=]() mutable { return distm(rng); };
+
+            // Mass sampler
+            if (std::abs(mmax - mmin) < 1e-6f) {
+                float fixed_mass = mmin;
+                sampler.msampler = [=]() { return fixed_mass; };
+            } else {
+                std::uniform_real_distribution<float> distm(mmin, mmax);
+                sampler.msampler = [=]() mutable { return distm(rng); };
+            }
             return sampler;
         }
         

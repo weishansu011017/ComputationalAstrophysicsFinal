@@ -60,6 +60,9 @@ int main(int argc, char** argv){
         ptcalculate_a();
         pt.kick(0.5);
 
+        // Sanity check
+        pt.particles_validation();
+
         // Other updating
         float deltat = mean(pt.dt);         // Currently, we don't have hierarchial time stepping (DO NOT USE THIS IN HIERARCHIAL TIMESTEPPING!!!!!!!!)
         // Time add & output dumpfile

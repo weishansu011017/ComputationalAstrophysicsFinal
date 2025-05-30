@@ -2,14 +2,13 @@
 #!/usr/bin/env python
 # build.py  --- Windows 取代 Makefile 的簡易 build script
 #
-# 用法：
+# Usage:
 #   python build.py                # same as “make simulation”
 #   python build.py simulation     # build simulation.exe
 #   python build.py setup          # build setup.exe
 #   python build.py testall        # build every test/*.cpp
 #   python build.py clean          # remove build artefacts
 #
-# 如要修改 HDF5 位置、編譯器或其他 flag，直接編輯下方常數即可。
 
 import sys
 import subprocess
@@ -20,20 +19,17 @@ from glob import glob
 import shlex
 
 # ──────────────────────────────────────────────────────────────
-# 🔧 1. 路徑與工具設定
+#       Path & Tool chain
 # ──────────────────────────────────────────────────────────────
-# 若你用的是 LLVM for Windows（例如 scoop / choco 裝的），通常只要把 clang++
-# 加進 PATH 即可；如果想強迫使用 LLVM 安裝資料夾，取消註解 LLVM_DIR 再下方用它。
-# LLVM_DIR = Path(r"C:\Program Files\LLVM")        # 例：LLVM 安裝根目錄
-CXX = r"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\x64\bin\clang-cl.exe"                                     # or "g++", "cl"
+CXX = r"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\x64\bin\clang-cl.exe"                        
 
-# HDF5 預設安裝路徑（請依自己的版本調整）
+# HDF5 Path
 HDF5_ROOT = Path(r"C:\Program Files\HDF_Group\HDF5\1.14.6")
 HDF5_INC  = HDF5_ROOT / "include"
 HDF5_LIB  = HDF5_ROOT / "lib"
 SZIP_ROOT = Path("E:/programming/libaec/build/src/Release")
 
-# 專案結構
+# Project Path
 CORE_DIR  = Path("src/core")
 MAIN_DIR  = Path("src/main")
 TEST_DIR  = Path("test")
@@ -41,7 +37,7 @@ BUILD_DIR = Path("build")
 (BUILD_DIR / "test").mkdir(parents=True, exist_ok=True)
 
 # ──────────────────────────────────────────────────────────────
-# 🔧 2. 編譯／連結旗標
+#       Flag of compiling
 # ──────────────────────────────────────────────────────────────
 INCLUDE_DIRS = [
     "/Iinclude",
@@ -56,19 +52,17 @@ LIB_DIRS = [
     f"/LIBPATH:{HDF5_LIB}"
 ]
 
-# ⚠️ Windows 不支援 -march=native 給 MSVC；若你改用 cl.exe 請刪掉。
 COMMON_CXXFLAGS = [
     "/std:c++17",
-    "/O2",
-    "/MD",        # ✅ 配合 MSVC 預設 CRT（HDF5 預設用 /MD 編譯）
+    "/Ox",
+    "/MD",        
     "/openmp",
-    "/EHsc",      # exception handler
+    "/EHsc",    
     "/bigobj",
     "-DM_PI=3.14159265358979323846",
 ]
 
 
-# 直接列絕對路徑，避免空白路徑被 linker 誤判
 LIBS = [
     HDF5_LIB / "libhdf5_cpp.lib",
     HDF5_LIB / "libhdf5.lib",
@@ -81,17 +75,17 @@ LIBS = [
 LDFLAGS = [str(lib) for lib in LIBS]
 
 # ──────────────────────────────────────────────────────────────
-# 🔧 3. 公用函式
+#       Common Method
 # ──────────────────────────────────────────────────────────────
 def run(cmd: list[str]) -> None:
-    """執行編譯指令並在失敗時終止腳本。"""
+    """Execute the compiling command"""
     print(">>", " ".join(shlex.quote(a) for a in cmd))
     result = subprocess.run(cmd)
     if result.returncode != 0:
         sys.exit(result.returncode)
 
 def compile_exe(output: Path, sources: list[Path]) -> None:
-    """將 sources 編譯成指定 exe。"""
+    """Compile program into .exe"""
     cmd = [CXX, *COMMON_CXXFLAGS, *INCLUDE_DIRS,
            *map(str, sources),
            "-o", str(output),
@@ -99,7 +93,7 @@ def compile_exe(output: Path, sources: list[Path]) -> None:
     run(cmd)
 
 # ──────────────────────────────────────────────────────────────
-# 🔧 4. 目標邏輯
+#           Target
 # ──────────────────────────────────────────────────────────────
 def target_simulation() -> None:
     core = list(Path(CORE_DIR).glob("*.cpp"))
@@ -137,7 +131,7 @@ def target_clean() -> None:
         print("Nothing to clean.")
 
 # ──────────────────────────────────────────────────────────────
-# 🔧 5. 主程式
+#       Main
 # ──────────────────────────────────────────────────────────────
 DEFAULT_TARGET = "simulation"
 TARGETS = {
