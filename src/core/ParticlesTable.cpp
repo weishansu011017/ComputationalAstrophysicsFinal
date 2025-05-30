@@ -4,6 +4,8 @@
 #include <omp.h>
 #include "UnitsTable.hpp"
 #include "ParticlesTable.hpp"
+#include "QuadTree.hpp"
+#include "OctTree.hpp"
 
 void ParticlesTable::_write_base_HDF5(hid_t file_id) const {
     // ============== /params/ ==============
@@ -149,7 +151,6 @@ void ParticlesTable::_read_base_HDF5(hid_t file_id){
     read_float_vector("/Table","dt", dt);
 }
 
-
 void ParticlesTable::extract_particles_table(const std::string& filename) const {
     // ============== Create Empty HDF5 File ==============
     hid_t file_id = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -167,7 +168,6 @@ void ParticlesTable::extract_particles_table(const std::string& filename) const 
     // Close File
     H5Fclose(file_id);
 }
-
 
 ParticlesTable ParticlesTable::read_particles_table(const std::string& filename){
     // ============== Open HDF5 File ==============
@@ -238,7 +238,11 @@ void ParticlesTable::calculate_a_dirnbody(){
 }
 
 void ParticlesTable::calculate_a_BHtree(){
-    // NEED IMPLEMENT
+    // NEED IMPLEMENT - 3D tree gravity
+}
+
+void ParticlesTable::calculate_a_BHtree_2D(){
+    // NEED IMPLEMENT - 2D tree gravity
 }
 
 
@@ -267,4 +271,13 @@ void ParticlesTable::drift(float scale){
 
 void ParticlesTable::particles_validation(){
     // NEED IMPLEMENT
+}
+
+// Tree building methods - delegate to tree classes
+QuadTree ParticlesTable::buildQuadTree() const {
+    return QuadTree::buildQuadTree(*this);
+}
+
+OctTree ParticlesTable::buildOctTree() const {
+    return OctTree::buildOctTree(*this);
 }

@@ -82,13 +82,14 @@ build/*
 
 # TOML setup configuration files (you may want to version control these)
 # Uncomment the next line if you don't want to track setup files
-# *.setup
+*.setup
 
 # Temporary data files
 *.tmp
 *.temp
 temp/
 tmp/
+./temp/*
 
 # Backup files
 *.bak
@@ -100,6 +101,7 @@ tmp/
 # Development environment files
 # =============================================================================
 # VS Code
+.vscode
 .vscode/
 *.code-workspace
 
@@ -156,6 +158,9 @@ $RECYCLE.BIN/
 *.log
 *.out
 *.err
+# core
+# core.*
+
 
 # Package management
 # =============================================================================
@@ -180,9 +185,9 @@ _build/
 _static/
 _templates/
 
-.vscode
-./temp/*
+# Makefile
 Makefile
+
 simulation
 *.in
 *.setup

@@ -5,6 +5,10 @@
 #include <string>
 #include <unordered_map>
 
+// Forward declarations
+class QuadTree;
+class OctTree;
+
 /*
     class ParticlesTable
 
@@ -62,6 +66,7 @@ public:
         std::fill(_ay.begin(), _ay.end(), 0.0f);
         std::fill(_az.begin(), _az.end(), 0.0f);
     }
+    
     // Destructor
     ~ParticlesTable() = default;
 
@@ -110,20 +115,23 @@ public:
 
     Calculate the acceleration by direct N-body method
     */
-   void calculate_a_dirnbody();
+    void calculate_a_dirnbody();
 
-   /*
+    /*
         void calculate_a_BHtree()
-
     Calculate the acceleration by Barnes–Hut tree
     */
-   void calculate_a_BHtree();
+    void calculate_a_BHtree();
+
+    /*
+        void calculate_a_BHtree_2D()
+    Calculate the acceleration by Barnes–Hut tree in 2D (using QuadTree)
+    */
+    void calculate_a_BHtree_2D();
 
     /*
         void kick();
-
     Do a kick operation to all of the active particles
-
     ## Input
         - float scale: scale of dt (stepping ... + scale * dt)
     */
@@ -131,9 +139,7 @@ public:
 
     /*
         void drift();
-        
     Do a drift operation to all of the active particles
-
     ## Input
         - float scale: scale of dt (stepping ... + scale * dt)
     */
@@ -146,6 +152,20 @@ public:
 
     */        
     void particles_validation();
+  
+    /*
+        QuadTree buildQuadTree() const
+    Build a quadtree from current particle positions
+    Returns a QuadTree object
+    */
+    QuadTree buildQuadTree() const;
+
+    /*
+        OctTree buildOctTree() const
+    Build an octree from current particle positions
+    Returns an OctTree object
+    */
+    OctTree buildOctTree() const;
 
 protected:
     // Allocating vector
@@ -157,25 +177,21 @@ protected:
         _ax.resize(N),_ay.resize(N),_az.resize(N);
     }
 
-    // Base I/O
+    // === Base I/O Methods ===
 
     /*
         void _write_base_HDF5(hid_t file_id) const;
     (Internal Method) Write the base properties of particles to HDF5
-
     ## Input
         - hid_t file_id: The HDF5 file handle created by H5Fcreate or H5Fopen
-
     */
     void _write_base_HDF5(hid_t file_id) const;
 
     /*
         void _read_base_HDF5(hid_t file_id);
     (Internal Method) Read the properties of particles from HDF5
-
     ## Input
         - hid_t file_id: The HDF5 file handle created by H5Fcreate or H5Fopen
     */
     void _read_base_HDF5(hid_t file_id);
-   
 };
