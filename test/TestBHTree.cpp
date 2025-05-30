@@ -1,108 +1,86 @@
+#include <iostream>
+#include <random>
+#include <cassert>
+#include <cmath>
+#include <filesystem>
 #include "ParticlesTable.hpp"
 #include "UnitsTable.hpp"
-#include "ParticlesSetup.hpp"
-#include "InitialConditionSetup.hpp"
-#include <iostream>
-#include <filesystem>
+#include "QuadTree.hpp"
+#include "OctTree.hpp"
 
-/*
-    TEST: Testing Barnes-Hut Tree Construction
+int main(){
+    std::cout << "\n=== Barnes-Hut Tree End-to-End Test ===\n\n";
 
-    Test content:
-    1. Create 100 particles with uniform distribution in a small box
-    2. Build both quadtree (2D) and octree (3D) from the particles
-    3. Save tree structures to files for visualization
-    4. Verify tree construction completed successfully
-*/
-
-int main() {
-    std::cout << "\n=== Barnes-Hut Tree Test ===\n\n";
-    
-    // Step 1: Create a simple particle setup
-    std::cout << "Step 1: Creating particle setup...\n";
-    
-    // Create a temporary setup object (we'll make it manually)
-    UnitsTable unit(1.0f, 1.0f);  // Simple units
-    ParticlesTable pt(unit, 100);  // 100 particles
-    pt.SimulationTag = "bhtree_test";
-    
-    // Manually create particle distribution in a 10x10x10 box
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> pos_dist(-5.0f, 5.0f);
-    std::uniform_real_distribution<float> vel_dist(-0.1f, 0.1f);
+    // 1) Create 100 particles in a small box [-0.1,0.1]^3
+    std::cout << "[1] Generating 100 particles in [-0.1,0.1]^3…\n";
+    UnitsTable units(1.0f, 1.0f);
+    const int N = 100;
+    ParticlesTable pt(units, N);
+    std::mt19937 rng{42};
+    std::uniform_real_distribution<float> pos(-0.1f, 0.1f);
     std::uniform_real_distribution<float> mass_dist(0.8f, 1.2f);
-    
-    float totalMass = 0.0f;
-    for (int i = 0; i < pt.N; i++) {
-        pt.particle_index[i] = i + 1;
-        
-        // Random positions in box
-        pt.x[i] = pos_dist(gen);
-        pt.y[i] = pos_dist(gen); 
-        pt.z[i] = pos_dist(gen);
-        
-        // Small random velocities
-        pt.vx[i] = vel_dist(gen);
-        pt.vy[i] = vel_dist(gen);
-        pt.vz[i] = vel_dist(gen);
-        
-        // Random masses around 1.0
-        pt.m[i] = mass_dist(gen);
+
+    float totalMass = 0;
+    for(int i=0; i<N; ++i){
+        pt.x[i] = pos(rng);
+        pt.y[i] = pos(rng);
+        pt.z[i] = pos(rng);
+        pt.m[i] = mass_dist(rng);
         totalMass += pt.m[i];
-        
-        // Zero smoothing length and timestep for now
-        pt.h[i] = 0.1f;
-        pt.dt[i] = 0.01f;
+        // v, h, dt can be left default or zero
     }
     pt.Mtot = totalMass;
-    
-    std::cout << "Created " << pt.N << " particles with total mass " << totalMass << "\n";
-    
-    // Step 2: Save initial conditions to HDF5 file
-    std::cout << "\nStep 2: Saving initial conditions...\n";
-    std::string ic_filename = "bhtree_test_00000.h5";
-    pt.extract_particles_table(ic_filename);
-    std::cout << "Saved to: " << ic_filename << "\n";
-    
-    // Step 3: Test reading the file back
-    std::cout << "\nStep 3: Reading particles from file...\n";
-    ParticlesTable pt_read = ParticlesTable::read_particles_table(ic_filename);
-    std::cout << "Successfully read " << pt_read.N << " particles\n";
-    
-    // Step 4: Build quadtree (2D)
-    std::cout << "\nStep 4: Building quadtree (2D)...\n";
-    pt_read.buildQuadTree();
-    std::cout << "Quadtree construction completed\n";
-    
-    // Step 5: Build octree (3D) 
-    std::cout << "\nStep 5: Building octree (3D)...\n";
-    pt_read.buildOctTree();
-    std::cout << "Octree construction completed\n";
-    
-    // Step 6: Save tree structures
-    std::cout << "\nStep 6: Saving tree structures...\n";
-    
-    // Save quadtree
-    pt_read.saveQuadTreeToFile("quadtree_structure.txt");
-    std::cout << "Saved quadtree structure to: quadtree_structure.txt\n";
-    
-    // Save octree
-    pt_read.saveOctTreeToFile("octree_structure.txt");  
-    std::cout << "Saved octree structure to: octree_structure.txt\n";
-    
-    // Step 7: Summary
-    std::cout << "\n=== Test Summary ===\n";
-    std::cout << "✓ Created " << pt.N << " test particles\n";
-    std::cout << "✓ Saved/loaded HDF5 file successfully\n"; 
-    std::cout << "✓ Built quadtree for 2D visualization\n";
-    std::cout << "✓ Built octree for 3D visualization\n";
-    std::cout << "✓ Exported tree structures for Python plotting\n";
-    std::cout << "\nFiles created:\n";
-    std::cout << "  - " << ic_filename << " (particle data)\n";
-    std::cout << "  - quadtree_structure.txt (2D tree)\n";
-    std::cout << "  - octree_structure.txt (3D tree)\n";
-    std::cout << "\nRun Python visualization scripts to see the trees!\n\n";
-    
+    std::cout << "    total mass = " << totalMass << "\n";
+
+    // 2) Write to HDF5 and read back
+    const std::string h5file = "bhtree_particles.h5";
+    std::cout << "[2] Writing to " << h5file << "…\n";
+    pt.extract_particles_table(h5file);
+
+    std::cout << "[3] Reading back…\n";
+    ParticlesTable pt2 = ParticlesTable::read_particles_table(h5file);
+    float mass2 = 0;
+    for(int i=0; i<pt2.N; ++i) mass2 += pt2.m[i];
+    assert(std::abs(totalMass - mass2) < 1e-6f);
+    std::cout << "    verified mass = " << mass2 << "\n";
+
+    // 3) Build QuadTree in three ways & dump
+    std::cout << "[4] Building & dumping QuadTrees…\n";
+    {
+        // a) instance
+        auto qt1 = pt2.buildQuadTree();
+        qt1.saveToFile("quadtree_instance.txt");
+
+        // b) static
+        auto qt2 = QuadTree::buildQuadTree(pt2);
+        qt2.saveToFile("quadtree_static.txt");
+
+        // c) direct
+        QuadTree qt3;
+        qt3.buildFromParticles(pt2);
+        qt3.saveToFile("quadtree_direct.txt");
+    }
+
+    // 4) Build OctTree in three ways & dump
+    std::cout << "[5] Building & dumping OctTrees…\n";
+    {
+        // a) instance
+        auto ot1 = pt2.buildOctTree();
+        ot1.saveToFile("octree_instance.txt");
+
+        // b) static
+        auto ot2 = OctTree::buildOctTree(pt2);
+        ot2.saveToFile("octree_static.txt");
+
+        // c) direct
+        OctTree ot3;
+        ot3.buildFromParticles(pt2);
+        ot3.saveToFile("octree_direct.txt");
+    }
+
+    std::cout << "\nDone! Files created:\n"
+              << "  bhtree_particles.h5\n"
+              << "  quadtree_{instance,static,direct}.txt\n"
+              << "  octree_{instance,static,direct}.txt\n\n";
     return 0;
 }

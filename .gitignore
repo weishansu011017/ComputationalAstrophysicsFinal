@@ -158,8 +158,8 @@ $RECYCLE.BIN/
 *.log
 *.out
 *.err
-core
-core.*
+# core
+# core.*
 
 # Package management
 # =============================================================================

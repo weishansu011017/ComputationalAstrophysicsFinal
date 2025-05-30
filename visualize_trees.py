@@ -1,226 +1,476 @@
 #!/usr/bin/env python3
 """
-Visualize Barnes-Hut Trees from C++ output
+enhanced_tree_visualization.py
+
+Complete visualization for both QuadTree and OctTree:
+1. QuadTree comparison with centers of mass and depth coloring
+2. OctTree comparison and projections
+3. Statistical analysis for both tree types
 """
 
+import os
+import h5py
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import numpy as np
-import h5py
+from matplotlib.gridspec import GridSpec
+from matplotlib.colors import Normalize
 
-def read_particles(filename):
-    """Read particle data from HDF5 file"""
-    particles = {}
-    with h5py.File(filename, 'r') as f:
-        particles['x'] = f['/Table/x'][:]
-        particles['y'] = f['/Table/y'][:]
-        particles['z'] = f['/Table/z'][:]
-        particles['m'] = f['/Table/m'][:]
-        particles['N'] = f['/params/N'][()]
-    return particles
+# ─── Read Particles ─────────────────────────────────────────────────────────
 
-def read_quadtree(filename):
-    """Read quadtree structure from text file"""
+def read_particles(h5path='bhtree_particles.h5'):
+    """Load x,y,z,m,N from HDF5 dump."""
+    with h5py.File(h5path, 'r') as f:
+        x = f['/Table/x'][:]
+        y = f['/Table/y'][:]
+        z = f['/Table/z'][:]
+        m = f['/Table/m'][:]
+        N = int(f['/params/N'][()])
+    return {'x': x, 'y': y, 'z': z, 'm': m, 'N': N}
+
+# ─── Parse Trees ────────────────────────────────────────────────────────────
+
+def read_quadtree(txtpath):
+    """Return list of dicts with quadtree node information."""
     nodes = []
-    with open(filename, 'r') as f:
-        lines = f.readlines()
-        
-    for line in lines:
-        if line.startswith('#') or line.startswith('QUADTREE'):
-            continue
-        
-        parts = line.strip().split()
-        if len(parts) < 8:
-            continue
-            
-        node = {
-            'depth': int(parts[0]),
-            'xmin': float(parts[1]),
-            'xmax': float(parts[2]), 
-            'ymin': float(parts[3]),
-            'ymax': float(parts[4]),
-            'centerX': float(parts[5]),
-            'centerY': float(parts[6]),
-            'totalMass': float(parts[7]),
-            'numParticles': int(parts[8]),
-            'particleIndices': [int(x) for x in parts[9:]] if len(parts) > 9 else []
-        }
-        nodes.append(node)
-    
+    with open(txtpath, 'r') as f:
+        for line in f:
+            if line.startswith('#') or line.startswith('QUADTREE') or not line.strip(): 
+                continue
+            parts = line.split()
+            if len(parts) < 9: 
+                continue
+            nodes.append({
+                'depth':        int(parts[0]),
+                'xmin':         float(parts[1]),
+                'xmax':         float(parts[2]),
+                'ymin':         float(parts[3]),
+                'ymax':         float(parts[4]),
+                'centerX':      float(parts[5]),
+                'centerY':      float(parts[6]),
+                'totalMass':    float(parts[7]),
+                'numParticles': int(parts[8]),
+                'particleIndices': [int(i) for i in parts[9:]] if len(parts) > 9 else []
+            })
     return nodes
 
-def read_octree(filename):
-    """Read octree structure from text file"""
+def read_octree(txtpath):
+    """Return list of dicts with octree node information."""
     nodes = []
-    with open(filename, 'r') as f:
-        lines = f.readlines()
-        
-    for line in lines:
-        if line.startswith('#') or line.startswith('OCTREE'):
-            continue
-        
-        parts = line.strip().split()
-        if len(parts) < 11:
-            continue
-            
-        node = {
-            'depth': int(parts[0]),
-            'xmin': float(parts[1]),
-            'xmax': float(parts[2]),
-            'ymin': float(parts[3]), 
-            'ymax': float(parts[4]),
-            'zmin': float(parts[5]),
-            'zmax': float(parts[6]),
-            'centerX': float(parts[7]),
-            'centerY': float(parts[8]),
-            'centerZ': float(parts[9]),
-            'totalMass': float(parts[10]),
-            'numParticles': int(parts[11]),
-            'particleIndices': [int(x) for x in parts[12:]] if len(parts) > 12 else []
-        }
-        nodes.append(node)
-    
+    with open(txtpath, 'r') as f:
+        for line in f:
+            if line.startswith('#') or line.startswith('OCTREE') or not line.strip():
+                continue
+            parts = line.split()
+            if len(parts) < 12:
+                continue
+            nodes.append({
+                'depth':        int(parts[0]),
+                'xmin':         float(parts[1]),
+                'xmax':         float(parts[2]),
+                'ymin':         float(parts[3]),
+                'ymax':         float(parts[4]),
+                'zmin':         float(parts[5]),
+                'zmax':         float(parts[6]),
+                'centerX':      float(parts[7]),
+                'centerY':      float(parts[8]),
+                'centerZ':      float(parts[9]),
+                'totalMass':    float(parts[10]),
+                'numParticles': int(parts[11]),
+                'particleIndices': [int(i) for i in parts[12:]] if len(parts) > 12 else []
+            })
     return nodes
 
-def plot_quadtree(particles, nodes, filename='quadtree_plot.png'):
-    """Plot 2D quadtree visualization"""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
+# ─── Tree Statistics ────────────────────────────────────────────────────────
+
+def print_tree_stats(tree_type, trees_dict):
+    """Print statistics for tree structures."""
+    print(f"\n=== {tree_type} Statistics ===")
+    print(f"{'Method':<15} {'Nodes':<10} {'Max Depth':<12} {'Total Mass':<15} {'Leaf Nodes':<12}")
+    print("-" * 70)
     
-    # Left plot: Particles and tree boundaries
-    ax1.scatter(particles['x'], particles['y'], 
-               s=particles['m']*50, alpha=0.7, c='red', edgecolors='black')
+    for method, nodes in trees_dict.items():
+        num_nodes = len(nodes)
+        max_depth = max(n['depth'] for n in nodes) if nodes else 0
+        total_mass = sum(n['totalMass'] for n in nodes if n['depth'] == 0)
+        leaf_nodes = sum(1 for n in nodes if n['numParticles'] > 0)
+        
+        print(f"{method:<15} {num_nodes:<10} {max_depth:<12} {total_mass:<15.6f} {leaf_nodes:<12}")
+
+# ─── QuadTree Visualization with Centers of Mass ────────────────────────────
+
+def plot_quadtree_with_com(particles, nodes, title='QuadTree with Centers of Mass', 
+                           filename='quadtree_com.png'):
+    """Plot QuadTree with centers of mass colored by depth."""
+    fig = plt.figure(figsize=(16, 6))
+    gs = GridSpec(1, 3, width_ratios=[1, 1, 0.05])
     
-    # Draw tree boundaries with different colors by depth
-    colors = plt.cm.tab10(np.linspace(0, 1, 10))
+    # Left: Tree structure with cells
+    ax1 = fig.add_subplot(gs[0])
+    ax1.scatter(particles['x'], particles['y'],
+                s=particles['m']*40, c='red', alpha=0.6, edgecolors='black')
     
-    for node in nodes:
-        color = colors[node['depth'] % 10]
-        rect = patches.Rectangle(
-            (node['xmin'], node['ymin']),
-            node['xmax'] - node['xmin'],
-            node['ymax'] - node['ymin'],
-            linewidth=2 - node['depth']*0.2,
-            edgecolor=color,
-            facecolor='none',
-            alpha=0.8
-        )
-        ax1.add_patch(rect)
+    depths = [n['depth'] for n in nodes]
+    if depths:
+        cmap = plt.cm.viridis
+        norm = Normalize(min(depths), max(depths))
+        
+        for n in nodes:
+            ax1.add_patch(patches.Rectangle(
+                (n['xmin'], n['ymin']),
+                n['xmax']-n['xmin'], n['ymax']-n['ymin'],
+                edgecolor=cmap(norm(n['depth'])),
+                facecolor='none',
+                linewidth=max(0.5, 2.0 - 0.3*n['depth']),
+                alpha=0.8
+            ))
     
+    ax1.set_title('QuadTree Decomposition')
     ax1.set_xlabel('X Position')
-    ax1.set_ylabel('Y Position') 
-    ax1.set_title('Quadtree Decomposition')
-    ax1.grid(True, alpha=0.3)
+    ax1.set_ylabel('Y Position')
     ax1.set_aspect('equal')
+    ax1.grid(True, alpha=0.3)
     
-    # Right plot: Centers of mass
-    ax2.scatter(particles['x'], particles['y'], 
-               s=20, alpha=0.5, c='lightblue', label='Particles')
+    # Right: Centers of mass colored by depth
+    ax2 = fig.add_subplot(gs[1])
     
-    # Plot centers of mass sized by total mass
-    centers_x = [node['centerX'] for node in nodes if node['totalMass'] > 0]
-    centers_y = [node['centerY'] for node in nodes if node['totalMass'] > 0]
-    masses = [node['totalMass'] for node in nodes if node['totalMass'] > 0]
+    # Plot particles as background
+    ax2.scatter(particles['x'], particles['y'],
+                s=20, c='lightgray', alpha=0.3, label='Particles')
     
-    ax2.scatter(centers_x, centers_y, s=np.array(masses)*100, 
-               alpha=0.8, c='orange', edgecolors='red', label='Centers of Mass')
+    # Extract centers of mass with depth information
+    com_data = [(n['centerX'], n['centerY'], n['totalMass'], n['depth']) 
+                for n in nodes if n['totalMass'] > 0]
     
+    if com_data:
+        cx, cy, cmass, cdepth = zip(*com_data)
+        
+        # Color by depth
+        scatter = ax2.scatter(cx, cy, 
+                             s=np.array(cmass)*100,  # Size by mass
+                             c=cdepth,               # Color by depth
+                             cmap='plasma',
+                             edgecolors='black',
+                             alpha=0.8,
+                             vmin=min(depths),
+                             vmax=max(depths))
+        
+        # Add text labels for depth on larger nodes
+        for i, (x, y, m, d) in enumerate(com_data):
+            if m > 5.0:  # Only label significant nodes
+                ax2.text(x, y, str(d), fontsize=8, ha='center', va='center')
+    
+    ax2.set_title('Centers of Mass (size=mass, color=depth)')
     ax2.set_xlabel('X Position')
     ax2.set_ylabel('Y Position')
-    ax2.set_title('Centers of Mass')
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
     ax2.set_aspect('equal')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend(loc='upper right')
     
+    # Colorbar
+    cbar_ax = fig.add_subplot(gs[2])
+    if com_data:
+        cbar = plt.colorbar(scatter, cax=cbar_ax, label='Tree Depth')
+        cbar.set_ticks(range(min(depths), max(depths)+1))
+    
+    fig.suptitle(title, fontsize=16)
     plt.tight_layout()
     plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.show()
-    print(f"Quadtree plot saved as: {filename}")
+    print(f"Saved → {filename}")
 
-def plot_octree_projection(particles, nodes, filename='octree_plot.png'):
-    """Plot 3D octree as 2D projections"""
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+# ─── OctTree Comparison ─────────────────────────────────────────────────────
+
+def compare_octrees(particles, trees_dict, filename='octree_comparison.png'):
+    """Create comparison plot of all three octree methods."""
+    fig = plt.figure(figsize=(18, 6))
     
-    projections = [
-        ('x', 'y', 'XY Plane'),
-        ('x', 'z', 'XZ Plane'), 
-        ('y', 'z', 'YZ Plane'),
-        ('centers', 'mass', 'Mass Distribution')
-    ]
+    methods = ['instance', 'static', 'direct']
+    titles = ['Instance Method\n(pt.buildOctTree())', 
+              'Static Method\n(OctTree::buildOctTree(pt))',
+              'Direct Method\n(ot.buildFromParticles(pt))']
     
-    for i, (dim1, dim2, title) in enumerate(projections):
-        ax = axes[i//2, i%2]
+    for i, (method, title) in enumerate(zip(methods, titles)):
+        ax = fig.add_subplot(1, 3, i+1)
         
-        if dim1 != 'centers':
-            # Scatter plot of particles
-            x_data = particles[dim1]
-            y_data = particles[dim2]
-            ax.scatter(x_data, y_data, s=particles['m']*30, 
-                      alpha=0.6, c='blue', edgecolors='black')
-            
-            # Plot tree boundaries (just a subset for clarity)
-            for node in nodes:
-                if node['depth'] <= 2:  # Only show first few levels
-                    if dim1 == 'x' and dim2 == 'y':
-                        rect = patches.Rectangle(
-                            (node['xmin'], node['ymin']),
-                            node['xmax'] - node['xmin'],
-                            node['ymax'] - node['ymin'],
-                            linewidth=1, edgecolor='red', facecolor='none', alpha=0.5
-                        )
-                        ax.add_patch(rect)
-            
-            ax.set_xlabel(f'{dim1.upper()} Position')
-            ax.set_ylabel(f'{dim2.upper()} Position')
-            
-        else:
-            # Centers of mass plot
-            centers_x = [node['centerX'] for node in nodes if node['totalMass'] > 0]
-            centers_y = [node['centerY'] for node in nodes if node['totalMass'] > 0]
-            centers_z = [node['centerZ'] for node in nodes if node['totalMass'] > 0]
-            masses = [node['totalMass'] for node in nodes if node['totalMass'] > 0]
-            
-            scatter = ax.scatter(centers_x, centers_y, s=np.array(masses)*50,
-                               c=centers_z, cmap='viridis', alpha=0.8, edgecolors='black')
-            plt.colorbar(scatter, ax=ax, label='Z Position')
-            ax.set_xlabel('X Position')
-            ax.set_ylabel('Y Position')
+        # Plot XY projection
+        ax.scatter(particles['x'], particles['y'],
+                   s=particles['m']*30, c='blue', alpha=0.5, edgecolors='black')
+        
+        # Plot octree cells (XY projection, limited depth)
+        nodes = trees_dict[method]
+        max_depth = 3  # Limit depth for clarity
+        
+        for n in nodes:
+            if n['depth'] <= max_depth:
+                ax.add_patch(patches.Rectangle(
+                    (n['xmin'], n['ymin']),
+                    n['xmax']-n['xmin'], n['ymax']-n['ymin'],
+                    edgecolor='red',
+                    facecolor='none',
+                    linewidth=max(0.5, 2.0 - 0.4*n['depth']),
+                    alpha=0.6
+                ))
         
         ax.set_title(title)
-        ax.grid(True, alpha=0.3)
+        ax.set_xlabel('X Position')
+        ax.set_ylabel('Y Position')
         ax.set_aspect('equal')
+        ax.grid(True, alpha=0.3)
     
+    fig.suptitle('OctTree Comparison: Three Build Methods (XY Projection)', fontsize=16)
     plt.tight_layout()
     plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.show()
-    print(f"Octree plot saved as: {filename}")
+    print(f"Saved → {filename}")
 
-def main():
-    print("Barnes-Hut Tree Visualizer")
-    print("==========================")
-    
-    # Read particle data
-    try:
-        particles = read_particles('bhtree_test_00000.h5')
-        print(f"Read {particles['N']} particles from HDF5 file")
-    except:
-        print("Could not read particle file. Make sure to run TestBHTree first!")
+# ─── OctTree Centers of Mass Visualization ─────────────────────────────────
+
+def plot_octree_com(particles, nodes, filename='octree_com.png'):
+    """Plot OctTree centers of mass in 3D and projections, with non-overlapping colorbar."""
+    # Prepare COM data
+    com_data = [(n['centerX'], n['centerY'], n['centerZ'], n['totalMass'], n['depth'])
+                for n in nodes if n['totalMass'] > 0]
+    if not com_data:
+        print("No centers of mass found in octree!")
         return
-    
-    # Visualize quadtree
-    try:
-        quad_nodes = read_quadtree('quadtree_structure.txt')
-        print(f"Read {len(quad_nodes)} quadtree nodes")
-        plot_quadtree(particles, quad_nodes)
-    except Exception as e:
-        print(f"Could not visualize quadtree: {e}")
-    
-    # Visualize octree
-    try:
-        oct_nodes = read_octree('octree_structure.txt')
-        print(f"Read {len(oct_nodes)} octree nodes")
-        plot_octree_projection(particles, oct_nodes)
-    except Exception as e:
-        print(f"Could not visualize octree: {e}")
+    cx, cy, cz, cmass, cdepth = zip(*com_data)
+    depths = [n['depth'] for n in nodes]
+    cmap = plt.cm.plasma
+    norm = Normalize(min(depths), max(depths))
 
-if __name__ == "__main__":
-    main()
+    # Figure + GridSpec: 2 rows × 3 cols (last col for colorbar)
+    fig = plt.figure(figsize=(16, 12))
+    gs  = GridSpec(2, 3,
+                    width_ratios =[1, 1, 0.05],
+                    height_ratios=[1, 1],
+                    wspace=0.3, hspace=0.3)
+
+    # Axes
+    ax1 = fig.add_subplot(gs[0, 0], projection='3d')
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax3 = fig.add_subplot(gs[1, 0])
+    ax4 = fig.add_subplot(gs[1, 1])
+    cax = fig.add_subplot(gs[:, 2])  # colorbar spans both rows
+
+    # 3D view
+    ax1.scatter(particles['x'], particles['y'], particles['z'],
+                s=5, c='lightgray', alpha=0.3)
+    scatter3d = ax1.scatter(cx, cy, cz,
+                            s=np.array(cmass)*50,
+                            c=cdepth, cmap=cmap, norm=norm,
+                            edgecolors='black', alpha=0.8)
+    ax1.set_title('OctTree Centers of Mass (3D View)')
+    ax1.set_xlabel('X'); ax1.set_ylabel('Y'); ax1.set_zlabel('Z')
+
+    # XY projection
+    ax2.scatter(particles['x'], particles['y'], s=10,
+                c='lightgray', alpha=0.3)
+    scatter_xy = ax2.scatter(cx, cy,
+                             s=np.array(cmass)*80,
+                             c=cdepth, cmap=cmap, norm=norm,
+                             edgecolors='black', alpha=0.8)
+    ax2.set_title('XY Projection')
+    ax2.set_xlabel('X Position'); ax2.set_ylabel('Y Position')
+    ax2.set_aspect('equal'); ax2.grid(True, alpha=0.3)
+
+    # XZ projection
+    ax3.scatter(particles['x'], particles['z'], s=10,
+                c='lightgray', alpha=0.3)
+    scatter_xz = ax3.scatter(cx, cz,
+                             s=np.array(cmass)*80,
+                             c=cdepth, cmap=cmap, norm=norm,
+                             edgecolors='black', alpha=0.8)
+    ax3.set_title('XZ Projection')
+    ax3.set_xlabel('X Position'); ax3.set_ylabel('Z Position')
+    ax3.set_aspect('equal'); ax3.grid(True, alpha=0.3)
+
+    # YZ projection
+    ax4.scatter(particles['y'], particles['z'], s=10,
+                c='lightgray', alpha=0.3)
+    scatter_yz = ax4.scatter(cy, cz,
+                             s=np.array(cmass)*80,
+                             c=cdepth, cmap=cmap, norm=norm,
+                             edgecolors='black', alpha=0.8)
+    ax4.set_title('YZ Projection')
+    ax4.set_xlabel('Y Position'); ax4.set_ylabel('Z Position')
+    ax4.set_aspect('equal'); ax4.grid(True, alpha=0.3)
+
+    # Single colorbar in its own column
+    cbar = fig.colorbar(scatter_xy, cax=cax)
+    cbar.set_label('Tree Depth')
+    cbar.set_ticks(range(min(depths), max(depths)+1))
+
+    # Super title and save
+    fig.suptitle('OctTree Centers of Mass Visualization', fontsize=16)
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.show()
+    print(f"Saved → {filename}")
+
+# ─── Combined Tree Structure Comparison ─────────────────────────────────────
+
+def plot_tree_depth_distribution(quad_trees, oct_trees, filename='tree_depth_distribution.png'):
+    """Compare depth distributions between QuadTree and OctTree."""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    
+    # QuadTree depth distribution
+    for method, nodes in quad_trees.items():
+        depths = [n['depth'] for n in nodes]
+        depth_counts = {}
+        for d in depths:
+            depth_counts[d] = depth_counts.get(d, 0) + 1
+        
+        sorted_depths = sorted(depth_counts.keys())
+        counts = [depth_counts[d] for d in sorted_depths]
+        
+        ax1.plot(sorted_depths, counts, 'o-', label=method, markersize=8)
+    
+    ax1.set_xlabel('Tree Depth')
+    ax1.set_ylabel('Number of Nodes')
+    ax1.set_title('QuadTree Depth Distribution')
+    ax1.grid(True, alpha=0.3)
+    ax1.legend()
+    ax1.set_yscale('log')
+    
+    # OctTree depth distribution
+    for method, nodes in oct_trees.items():
+        depths = [n['depth'] for n in nodes]
+        depth_counts = {}
+        for d in depths:
+            depth_counts[d] = depth_counts.get(d, 0) + 1
+        
+        sorted_depths = sorted(depth_counts.keys())
+        counts = [depth_counts[d] for d in sorted_depths]
+        
+        ax2.plot(sorted_depths, counts, 's-', label=method, markersize=8)
+    
+    ax2.set_xlabel('Tree Depth')
+    ax2.set_ylabel('Number of Nodes')
+    ax2.set_title('OctTree Depth Distribution')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend()
+    ax2.set_yscale('log')
+    
+    fig.suptitle('Tree Depth Distribution Comparison', fontsize=16)
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.show()
+    print(f"Saved → {filename}")
+
+# ─── QuadTree Comparison ────────────────────────────────────────────────────
+
+def compare_quadtrees(particles, trees_dict, filename='quadtree_all_methods.png'):
+    """Create comparison plot of all three QuadTree build methods."""
+    fig = plt.figure(figsize=(18, 6))
+
+    methods = ['instance', 'static', 'direct']
+    titles = [
+        'Instance Method\n(pt.buildQuadTree())',
+        'Static Method\n(QuadTree.buildQuadTree(pt))',
+        'Direct Method\n(qt.buildFromParticles(pt))'
+    ]
+
+    for i, (method, title) in enumerate(zip(methods, titles)):
+        ax = fig.add_subplot(1, 3, i+1)
+
+        # Plot particles in the background
+        ax.scatter(particles['x'], particles['y'],
+                   s=particles['m'] * 30, c='blue',
+                   alpha=0.5, edgecolors='black')
+
+        # Overlay QuadTree cell boundaries up to a limited depth
+        nodes = trees_dict[method]
+        max_depth = 3  # adjust if you want deeper detail
+        for n in nodes:
+            if n['depth'] <= max_depth:
+                ax.add_patch(patches.Rectangle(
+                    (n['xmin'], n['ymin']),
+                    n['xmax'] - n['xmin'], n['ymax'] - n['ymin'],
+                    edgecolor='red',
+                    facecolor='none',
+                    linewidth=max(0.5, 2.0 - 0.4 * n['depth']),
+                    alpha=0.6
+                ))
+
+        ax.set_title(title)
+        ax.set_xlabel('X Position')
+        ax.set_ylabel('Y Position')
+        ax.set_aspect('equal')
+        ax.grid(True, alpha=0.3)
+
+    fig.suptitle('QuadTree Comparison: Three Build Methods (XY Projection)', fontsize=16)
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.show()
+    print(f"Saved → {filename}")
+
+# ─── Main ───────────────────────────────────────────────────────────────────
+
+if __name__ == '__main__':
+    # Check if files exist
+    required_files = ['bhtree_particles.h5', 
+                      'quadtree_instance.txt', 'quadtree_static.txt', 'quadtree_direct.txt',
+                      'octree_instance.txt', 'octree_static.txt', 'octree_direct.txt']
+    
+    for file in required_files:
+        if not os.path.exists(file):
+            print(f"ERROR: {file} not found. Run TestBHTree first!")
+            exit(1)
+    
+    # Load particles
+    print("Loading particles...")
+    particles = read_particles('bhtree_particles.h5')
+    print(f"Loaded {particles['N']} particles")
+    
+    # Load QuadTree files
+    print("\nLoading QuadTree files...")
+    quad_trees = {
+        'instance': read_quadtree('quadtree_instance.txt'),
+        'static': read_quadtree('quadtree_static.txt'),
+        'direct': read_quadtree('quadtree_direct.txt')
+    }
+    
+    # Load OctTree files
+    print("Loading OctTree files...")
+    oct_trees = {
+        'instance': read_octree('octree_instance.txt'),
+        'static': read_octree('octree_static.txt'),
+        'direct': read_octree('octree_direct.txt')
+    }
+    
+    # Print statistics
+    print_tree_stats("QuadTree", quad_trees)
+    print_tree_stats("OctTree", oct_trees)
+    
+    # Generate visualizations
+    print("\n=== Generating Visualizations ===")
+    
+    # 1. QuadTree with centers of mass
+    print("\n1. QuadTree with centers of mass...")
+    plot_quadtree_with_com(particles, quad_trees['direct'], 
+                          'QuadTree Structure with Centers of Mass',
+                          'quadtree_com_direct.png')
+    
+    # 2. QuadTree comparison (all methods)
+    print("\n2. Comparing QuadTree methods...")
+    compare_quadtrees(particles, quad_trees, 'quadtree_all_methods.png')
+    
+    # 3. OctTree comparison
+    print("\n3. Comparing OctTree methods...")
+    compare_octrees(particles, oct_trees, 'octree_comparison.png')
+    
+    # 4. OctTree centers of mass
+    print("\n4. OctTree centers of mass...")
+    plot_octree_com(particles, oct_trees['direct'], 'octree_com_3d.png')
+    
+    # 5. Tree depth distribution
+    print("\n5. Tree depth distributions...")
+    plot_tree_depth_distribution(quad_trees, oct_trees, 'tree_depth_comparison.png')
+    
+    print("\n=== Visualization Complete! ===")
+    print("\nGenerated files:")
+    print("  - quadtree_com_direct.png    : QuadTree with COM colored by depth")
+    print("  - quadtree_all_methods.png   : Comparison of three QuadTree methods")
+    print("  - octree_comparison.png      : Comparison of three OctTree methods")
+    print("  - octree_com_3d.png         : OctTree COM in 3D and projections")
+    print("  - tree_depth_comparison.png  : Depth distribution analysis")
