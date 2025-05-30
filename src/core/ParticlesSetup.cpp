@@ -61,7 +61,8 @@ void ParticlesSetupUniform::_make_setupin_toml(const std::string& simulation_tag
     _write_toml_kvc(fout, "N", N, "Number of particles");
     _write_toml_kvc(fout, "udist", udist, "Code unit of length in cgs");
     _write_toml_kvc(fout, "umass", umass, "Code unit of mass in cgs");
-    _write_toml_kvc(fout, "softfactor", softfactor, "Softening factor for gravity (Suggestion: 0.01 < eta < 0.1)");
+    _write_toml_kvc(fout, "softfactorx", softfactorx, "Softening factor for gravity (Suggestion: 0.01 < etax < 0.1)");
+    _write_toml_kvc(fout, "tsfactor", tsfactor, "Factor for estimating timestep (Suggestion: 0.1 < etat < 1.0)");
     fout << "\n[InitialConditions]\n";
     fout << "# Initial Considion setup module: `Uniform` (Uniform box inside a given cube with given mass sampling range)\n";
     _write_toml_kvc(fout, "xmin", xmin, "Minimum x-position sampling for particles IN CODE UNITS.");
@@ -102,7 +103,8 @@ void ParticlesSetupUniform::_read_setupin_toml(const std::string& filename) {
     udist  = config["SimulationParameters"]["udist"].value_or(udist);
     umass  = config["SimulationParameters"]["umass"].value_or(umass);
     SimulationTag = config["SimulationParameters"]["SimulationTag"].value_or(SimulationTag);
-    softfactor  = config["SimulationParameters"]["softfactor"].value_or(softfactor);
+    softfactorx  = config["SimulationParameters"]["softfactorx"].value_or(softfactorx);
+    tsfactor  = config["SimulationParameters"]["tsfactor"].value_or(tsfactor);
 
     // ========= Initial Conditions =========
     xmin = config["InitialConditions"]["xmin"].value_or(xmin);
@@ -144,22 +146,16 @@ void ParticlesSetupIsotropic::_make_setupin_toml(const std::string& simulation_t
     _write_toml_kvc(fout, "N", N, "Number of particles");
     _write_toml_kvc(fout, "udist", udist, "Code unit of length in cgs");
     _write_toml_kvc(fout, "umass", umass, "Code unit of mass in cgs");
-    _write_toml_kvc(fout, "softfactor", softfactor, "Softening factor for gravity (Suggestion: 0.01 < eta < 0.1)");
+    _write_toml_kvc(fout, "softfactorx", softfactorx, "Softening factor for gravity (Suggestion: 0.01 < etax < 0.1)");
+    _write_toml_kvc(fout, "tsfactor", tsfactor, "Factor for estimating timestep (Suggestion: 0.1 < etat < 1.0)");
     fout << "\n[InitialConditions]\n";
     fout << "# Initial Considion setup module: `Isotropic` (Isotropic sphere with power law distribution along spacial direction.)\n";
     _write_toml_kvc(fout, "rmax", rmax, "Maximum radius for particles IN CODE UNITS.");
-    _write_toml_kvc(fout, "alpha", alpha, "Power law index r^-alpha");
+    _write_toml_kvc(fout, "alpha", alpha, "Power law index r^alpha");
 
     _write_toml_kvc(fout, "rcx", rcx, "x-position of center of particles distribution IN CODE UNITS.");
     _write_toml_kvc(fout, "rcy", rcy, "y-position of center of particles distribution IN CODE UNITS.");
     _write_toml_kvc(fout, "rcz", rcz, "z-position of center of particles distribution IN CODE UNITS.");
-
-    _write_toml_kvc(fout, "vrmin", vrmin, "Minimum vr-position sampling for particles IN CODE UNITS.");
-    _write_toml_kvc(fout, "vrmax", vrmax, "Maximum vr-position sampling for particles IN CODE UNITS.");
-    _write_toml_kvc(fout, "vphimin", vphimin, "Minimum vphi-position sampling for particles IN CODE UNITS.");
-    _write_toml_kvc(fout, "vphimax", vphimax, "Maximum vphi-position sampling for particles IN CODE UNITS.");
-    _write_toml_kvc(fout, "vthetamin", vthetamin, "Minimum vtheta-position sampling for particles IN CODE UNITS.");
-    _write_toml_kvc(fout, "vthetamax", vthetamax, "Maximum vtheta-position sampling for particles IN CODE UNITS.");
 
     _write_toml_kvc(fout, "mmin", mmin, "Minimum mass sampling for particles IN CODE UNITS.");
     _write_toml_kvc(fout, "mmax", mmax, "Maximum mass sampling for particles IN CODE UNITS.");
@@ -185,7 +181,8 @@ void ParticlesSetupIsotropic::_read_setupin_toml(const std::string& filename) {
     udist  = config["SimulationParameters"]["udist"].value_or(udist);
     umass  = config["SimulationParameters"]["umass"].value_or(umass);
     SimulationTag = config["SimulationParameters"]["SimulationTag"].value_or(SimulationTag);
-    softfactor  = config["SimulationParameters"]["softfactor"].value_or(softfactor);
+    softfactorx  = config["SimulationParameters"]["softfactorx"].value_or(softfactorx);
+    tsfactor  = config["SimulationParameters"]["tsfactor"].value_or(tsfactor);
 
     // ========= Initial Conditions =========
     rmax = config["InitialConditions"]["rmax"].value_or(rmax);
@@ -193,13 +190,6 @@ void ParticlesSetupIsotropic::_read_setupin_toml(const std::string& filename) {
     rcx = config["InitialConditions"]["rcx"].value_or(rcx);
     rcy = config["InitialConditions"]["rcy"].value_or(rcy);
     rcz = config["InitialConditions"]["rcz"].value_or(rcz);
-
-    vrmin = config["InitialConditions"]["vrmin"].value_or(vrmin);
-    vrmax = config["InitialConditions"]["vrmax"].value_or(vrmax);
-    vphimin = config["InitialConditions"]["vphimin"].value_or(vphimin);
-    vphimax = config["InitialConditions"]["vphimax"].value_or(vphimax);
-    vthetamin = config["InitialConditions"]["vthetamin"].value_or(vthetamin);
-    vthetamax = config["InitialConditions"]["vthetamax"].value_or(vthetamax);
 
     mmin = config["InitialConditions"]["mmin"].value_or(mmin);
     mmax = config["InitialConditions"]["mmax"].value_or(mmax);

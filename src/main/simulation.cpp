@@ -77,11 +77,11 @@ int main(int argc, char** argv){
         float deltat = mean(pt.dt);         // Currently, we don't have hierarchial time stepping (DO NOT USE THIS IN HIERARCHIAL TIMESTEPPING!!!!!!!!)
         // Time add & output dumpfile
         std::cout 
-            << "t = " << std::fixed << std::setw(9) << std::setprecision(5) << pt.t
+            << "t = " << std::scientific << std::setw(13) << std::setprecision(6) << pt.t
             << " (code unit)  =====>  "
-            << std::fixed << std::setw(9) << std::setprecision(5) << pt.t + deltat
+            << std::scientific << std::setw(13) << std::setprecision(6) << pt.t + deltat
             << " (code unit), Walltime/iter = "
-            << std::setw(6) << duration << " us"
+            << std::setw(8) << duration << " us"
             << std::endl;
 
         pt.t += deltat;        

@@ -209,9 +209,6 @@ void ParticlesTable::calculate_h(){
 
 void ParticlesTable::calculate_dt(){
     // NEED IMPLEMENT
-    for (int i = 0; i < N; ++i) {
-        dt[i] = 0.1;
-    }
 }
 
 void ParticlesTable::calculate_a_dirnbody(){

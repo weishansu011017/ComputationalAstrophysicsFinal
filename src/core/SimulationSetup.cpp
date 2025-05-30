@@ -56,8 +56,8 @@ void SimulationSetup::generate_parameters_file(const ParticlesSetup& setup, cons
     }
     fout << "[SimulationParameters]\n";
     _write_toml_kvc(fout, "input_file", input_file, "File for reading (Update whenever extract new dumpfile)");
-    _write_toml_kvc(fout, "tmax", 1.0e6 * dtref, "Max simulation time (IN CODE UNIT)");
-    _write_toml_kvc(fout, "dt_substepsmax", 1, " Max number of substeps per time step (Current No used)");
+    _write_toml_kvc(fout, "tmax", 4000.0 * dtref, "Max simulation time (IN CODE UNIT)");
+    _write_toml_kvc(fout, "dt_substepsmax", 1, "Max number of substeps per time step (Current No used)");
     _write_toml_kvc(fout, "num_per_dump", 10, "Dump output data per given timestep.");
     _write_toml_kvc(fout, "a_mode", 0, "Mode for calculate acceleration (0 => direct N-body, 1 => BHTree)");
 

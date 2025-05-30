@@ -25,17 +25,23 @@ int main(int argc, char** argv){
     // Assign empty place for `ParticlesSetup`
     std::unique_ptr<ParticlesSetup> setupptr;
 
-    if (ICsetup == "uniform") {
-        std::cout << " Select Initial Condition mode: `uniform`\n";
-        std::cout << "     (Uniform box inside a given cube with given mass sampling range)\n\n";
-        setupptr = std::make_unique<ParticlesSetupUniform>(simulation_tag);
-    } else if (ICsetup == "isotropic") {
-        std::cout << " Select Initial Condition mode: `isotropic`\n";
-        std::cout << "     (Isotropic sphere with power law distribution along spacial direction.)\n\n";
-        setupptr = std::make_unique<ParticlesSetupIsotropic>(simulation_tag);
-    } else {
-        throw std::runtime_error("Unsupported setup mode: " + ICsetup);
+    try {
+        if (ICsetup == "uniform") {
+            std::cout << " Select Initial Condition mode: `uniform`\n";
+            std::cout << "     (Uniform box inside a given cube with given mass sampling range)\n\n";
+            setupptr = std::make_unique<ParticlesSetupUniform>(simulation_tag);
+        } else if (ICsetup == "isotropic") {
+            std::cout << " Select Initial Condition mode: `isotropic`\n";
+            std::cout << "     (Isotropic sphere with power law distribution along spacial direction.)\n\n";
+            setupptr = std::make_unique<ParticlesSetupIsotropic>(simulation_tag);
+        } else {
+            throw std::runtime_error("Unsupported setup mode: " + ICsetup);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Fatal error: " << e.what() << std::endl;
+        return 1;
     }
+    
     // Constructing `UnitsTable` from setup
     UnitsTable units = UnitsTable::setup_units(*setupptr);
 

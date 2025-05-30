@@ -22,7 +22,8 @@ public:
     float udist = 3.08567758128e18;
     float umass = 1.989e33;
     // Other parameters
-    float softfactor = 0.02;
+    float softfactorx = 0.02;
+    float tsfactor = 0.2;
 
     // Destructor
     virtual ~ParticlesSetup() = default;
@@ -151,23 +152,12 @@ class ParticlesSetupIsotropic : public ParticlesSetup{
         float rcy = 0.0f;
         float rcz = 0.0f;
         // Range of r
-        float rmax = 1.0f;
+        float rmax = 5.0f;
         float alpha = -2.0f; // r-sampling with power law rho(r) ∝ r^alpha
-
-        // Range of vr
-        float vrmin = -1.0f;
-        float vrmax = 1.0f;
-        // Range of vphi
-        float vphimin = -1.0f;
-        float vphimax = 1.0f;
-        // Range of vtheta
-        float vthetamin = -1.0f;
-        float vthetamax = 1.0f;
-
     
         // Range of mass
-        float mmin = 1e-20f;
-        float mmax = 1.0f;
+        float mmin = 1e-3f;
+        float mmax = 1e-2f;
         
     
         // Constructor
@@ -197,30 +187,31 @@ class ParticlesSetupIsotropic : public ParticlesSetup{
             std::mt19937 rng(std::random_device{}());
 
             SamplingFunctionsSet sampler;
-            
-            // velocity sampler
-            std::uniform_real_distribution<float> distvr(vrmin, vrmax);
-            std::uniform_real_distribution<float> distvphi(vphimin, vphimax);
-            std::uniform_real_distribution<float> distvtheta(vthetamin, vthetamax);
 
             // rsampler
             std::uniform_real_distribution<float> urand(0.0f,1.0f);
             auto r_sampler = [=]() mutable {
                 float u = urand(rng);
-                float a = -1.0f; 
-                float exp = a + 3.0f;
+                float exp = alpha + 3.0f;
                 float norm = std::pow(rmax, exp) - std::pow(1e-3, exp);
                 return std::pow(u * norm + std::pow(1e-3, exp), 1.0f / exp);
             };
+
+            // Estimate sigma from mass & radius: sigma^2 ~ G M / R
+            float Mtot_estimate = 0.5f * (mmin + mmax) * static_cast<float>(N);
+            float sigma2 = (Mtot_estimate) / (rmax * 0.5f);            // assume R_eff = rmax / 2
+            float sigma = std::sqrt(sigma2);
+            std::normal_distribution<float> gauss_v(0.0f, sigma);
+
             auto xyz_sampler = [=]() mutable {
                 // sample position
                 float r = r_sampler();
                 float phi = 2.0f * M_PI * urand(rng);
                 float theta = std::acos(1.0f - 2.0f * urand(rng));  // sampling on cos(theta)
                 // sample velocity
-                float vr = distvr(rng);
-                float vphi = distvphi(rng);
-                float vtheta = distvtheta(rng);
+                float vr = gauss_v(rng);
+                float vphi = gauss_v(rng);
+                float vtheta = gauss_v(rng);
 
                 std::array<float, 6> sph_coor{};
                 sph_coor[0] = r;
