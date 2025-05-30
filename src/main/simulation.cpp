@@ -1,8 +1,10 @@
 #include <string>
 #include <iostream>
+#include <iomanip> 
 #include <toml++/toml.h>
 #include <omp.h>
 #include <functional>
+#include <chrono>
 #include "ParticlesSetup.hpp"
 #include "UnitsTable.hpp"
 #include "ParticlesTable.hpp"
@@ -25,6 +27,7 @@ int main(int argc, char** argv){
 
     // Setup parallel stuff (OpenMP and CUDA).
     omp_set_num_threads(simsetup.OMP_NUM_THREAD);
+    std::cout << "Assigning " << simsetup.OMP_NUM_THREAD << " threads to OpenMP." << std::endl;
 
     // Read current dump file
     int current_idt = simsetup.extract_current_index();
@@ -53,6 +56,9 @@ int main(int argc, char** argv){
         if (pt.t >= simsetup.tmax){
             break;
         }
+        // Timer start 
+        auto start = std::chrono::high_resolution_clock::now();
+
         // KDK algorithm
         ptcalculate_a();
         pt.kick(0.5);
@@ -60,12 +66,27 @@ int main(int argc, char** argv){
         ptcalculate_a();
         pt.kick(0.5);
 
+        // Sanity check
+        pt.particles_validation();
+
+        // Timer end
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
         // Other updating
         float deltat = mean(pt.dt);         // Currently, we don't have hierarchial time stepping (DO NOT USE THIS IN HIERARCHIAL TIMESTEPPING!!!!!!!!)
         // Time add & output dumpfile
-        std::cout << "t = " << pt.t << " (code unit)  =====>  " << pt.t + deltat << " (code unit)" << std::endl;
+        std::cout 
+            << "t = " << std::scientific << std::setw(13) << std::setprecision(6) << pt.t
+            << " (code unit)  =====>  "
+            << std::scientific << std::setw(13) << std::setprecision(6) << pt.t + deltat
+            << " (code unit), Walltime/iter = "
+            << std::setw(8) << duration << " us"
+            << std::endl;
+
         pt.t += deltat;        
         ++iter;
+        
         if (iter % simsetup.num_per_dump == 0){
             ++current_idt;
             std::string timeindex = format_index(current_idt, 5);
