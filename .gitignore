@@ -161,6 +161,7 @@ $RECYCLE.BIN/
 # core
 # core.*
 
+
 # Package management
 # =============================================================================
 # Conan
@@ -186,6 +187,10 @@ _templates/
 
 # Makefile
 Makefile
+
+simulation
+*.in
+*.setup
 
 # Custom project ignores
 # =============================================================================

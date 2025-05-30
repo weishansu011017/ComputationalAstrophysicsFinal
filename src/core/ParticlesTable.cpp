@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <hdf5.h>
 #include <iostream>
+#include <omp.h>
 #include "UnitsTable.hpp"
 #include "ParticlesTable.hpp"
 #include "QuadTree.hpp"
@@ -202,8 +203,38 @@ ParticlesTable ParticlesTable::read_particles_table(const std::string& filename)
     return pt;
 }
 
-void ParticlesTable::calculate_a_dirnbody(){
+void ParticlesTable::calculate_h(){
     // NEED IMPLEMENT
+}
+
+void ParticlesTable::calculate_dt(){
+    // NEED IMPLEMENT
+}
+
+void ParticlesTable::calculate_a_dirnbody(){
+    // Direct calculate acc
+    #pragma omp parallel for 
+    for (int i = 0; i < N; ++i){
+        float axtemp = 0.0;
+        float aytemp = 0.0;
+        float aztemp = 0.0;
+        for (int j = 0; j < N; ++j){
+            if (i == j) continue;
+            float dx = x[j] - x[i];
+            float dy = y[j] - y[i];
+            float dz = z[j] - z[i];
+            float dr2 = dx * dx + dy * dy + dz * dz + h[i] * h[i];
+            float invr = 1.0f / sqrtf(dr2);
+            float invr3 = invr * invr * invr;
+            float mjinvr3 = m[j] * invr3;
+            axtemp += mjinvr3 * dx;
+            aytemp += mjinvr3 * dy;
+            aztemp += mjinvr3 * dz;
+        }
+        _ax[i] = axtemp;
+        _ay[i] = aytemp;
+        _az[i] = aztemp;
+    }
 }
 
 void ParticlesTable::calculate_a_BHtree(){
@@ -214,11 +245,31 @@ void ParticlesTable::calculate_a_BHtree_2D(){
     // NEED IMPLEMENT - 2D tree gravity
 }
 
-void ParticlesTable::kick(float scale){
-    // NEED IMPLEMENT
+
+void ParticlesTable::kick(float scale) {
+    #pragma omp parallel for
+    for (int i = 0; i < N; ++i) {
+        if (h[i] > 0.0f) { 
+            vx[i] += scale * _ax[i] * dt[i];
+            vy[i] += scale * _ay[i] * dt[i];
+            vz[i] += scale * _az[i] * dt[i];
+        }
+    }
 }
 
+
 void ParticlesTable::drift(float scale){
+    #pragma omp parallel for
+    for (int i = 0; i < N; ++i) {
+        if (h[i] > 0.0f) { 
+            x[i] += scale * vx[i] * dt[i];
+            y[i] += scale * vy[i] * dt[i];
+            z[i] += scale * vz[i] * dt[i];
+        }
+    }
+}
+
+void ParticlesTable::particles_validation(){
     // NEED IMPLEMENT
 }
 

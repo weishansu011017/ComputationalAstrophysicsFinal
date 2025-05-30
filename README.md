@@ -40,7 +40,23 @@ The final project of Computational Astrophysics course
    ./setup uniform testuniform
    ```
 
-   Since `testuniform.setup` does not exist, it will generate a`testuniform.setup`.  After modifing the setup file, typing `./setup uniform testuniform` again, the initial condition file `testuniform_00000.h5` would be generated.
+   Since `testuniform.setup` does not exist, it will generate a`testuniform.setup`.  After modifing the setup file, typing `./setup uniform testuniform` again, the initial condition file `testuniform_00000.h5` would be generated. Also, a parameter file `testuniform.in` will also been generated
+
+### Main simulation suite
+
+The main loop of simulation is written inside `simulation.cpp`. To compile it, type in
+
+```bash
+make
+```
+
+in your terminal. To start the simulation, type in
+
+```bash
+./simulation YOURPARAMS.in
+```
+
+Whenever a dumpfile is generated, the parameter file will update automatically.
 
 ### Test code compiling suite
 

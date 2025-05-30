@@ -3,6 +3,7 @@
 #include "UnitsTable.hpp"
 #include <vector>
 #include <string>
+#include <unordered_map>
 
 // Forward declarations
 class QuadTree;
@@ -96,6 +97,20 @@ public:
     
 
     /*
+        void calculate_h();
+
+    Calculate the smoothing radius of each particles
+    */
+    void calculate_h();
+
+    /*
+        void calculate_a_dirnbody()
+
+    Calculate dt of each particles.
+    */
+    void calculate_dt();
+
+    /*
         void calculate_a_dirnbody()
 
     Calculate the acceleration by direct N-body method
@@ -131,6 +146,14 @@ public:
     void drift(float scale = 1.0);
 
     /*
+        void particles_validation();
+        
+    Performs sanity checks and aggressive validation on particle data.
+
+    */        
+    void particles_validation();
+  
+    /*
         QuadTree buildQuadTree() const
     Build a quadtree from current particle positions
     Returns a QuadTree object
@@ -145,7 +168,6 @@ public:
     OctTree buildOctTree() const;
 
 protected:
-
     // Allocating vector
     virtual void _resize_vectors(std::size_t N) {
         particle_index.resize(N);
