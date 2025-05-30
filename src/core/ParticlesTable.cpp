@@ -205,9 +205,6 @@ ParticlesTable ParticlesTable::read_particles_table(const std::string& filename)
 
 void ParticlesTable::calculate_h(){
     // NEED IMPLEMENT
-    for (int i = 0; i < N; ++i) {
-        h[i] = 0.1;
-    }
 }
 
 void ParticlesTable::calculate_dt(){
@@ -218,7 +215,29 @@ void ParticlesTable::calculate_dt(){
 }
 
 void ParticlesTable::calculate_a_dirnbody(){
-    // NEED IMPLEMENT
+    // Direct calculate acc
+    #pragma omp parallel for 
+    for (int i = 0; i < N; ++i){
+        float axtemp = 0.0;
+        float aytemp = 0.0;
+        float aztemp = 0.0;
+        for (int j = 0; j < N; ++j){
+            if (i == j) continue;
+            float dx = x[j] - x[i];
+            float dy = y[j] - y[i];
+            float dz = z[j] - z[i];
+            float dr2 = dx * dx + dy * dy + dz * dz + h[i] * h[i];
+            float invr = 1.0f / sqrtf(dr2);
+            float invr3 = invr * invr * invr;
+            float mjinvr3 = m[j] * invr3;
+            axtemp += mjinvr3 * dx;
+            aytemp += mjinvr3 * dy;
+            aztemp += mjinvr3 * dz;
+        }
+        _ax[i] = axtemp;
+        _ay[i] = aytemp;
+        _az[i] = aztemp;
+    }
 }
 
 void ParticlesTable::calculate_a_BHtree(){

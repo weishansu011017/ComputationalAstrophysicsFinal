@@ -1,4 +1,3 @@
-### Generate by Chat GPT-o3
 #!/usr/bin/env python
 # build.py  --- Windows 取代 Makefile 的簡易 build script
 #
