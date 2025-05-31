@@ -33,14 +33,6 @@ int main(int argc, char** argv){
     int current_idt = simsetup.extract_current_index();
     ParticlesTable pt = ParticlesTable::read_particles_table(simsetup.input_file);
 
-    // Configure Barnes-Hut if needed
-    if (simsetup.a_mode == 1) {
-        // Optional: allow theta to be set in config file
-        // pt.setBHTreeTheta(simsetup.bh_theta);  // Add bh_theta to SimulationSetup
-        pt.setBHTreeTheta(0.5f);  // Default value
-        std::cout << "Using Barnes-Hut tree with theta = " << pt.bhTreeTheta << std::endl;
-    }
-
     // Specify the calculate_a() function
     std::function<void()> ptcalculate_a;
     if (simsetup.a_mode == 0){
@@ -52,29 +44,10 @@ int main(int argc, char** argv){
             pt.calculate_a_BHtree();
         };
     } else {
-        throw std::runtime_error("The a_mode " + std::to_string(simsetup.a_mode) + 
-                                " is not supported! Use 0 for direct, 1 for Barnes-Hut.");
+        throw std::runtime_error("The a_mode is not support to this program!");
     }
 
     // Other option
-    // Calculate initial energy for conservation check
-    float initial_kinetic = 0.0f;
-    float initial_potential = 0.0f;
-    
-    for (int i = 0; i < pt.N; i++) {
-        float v2 = pt.vx[i]*pt.vx[i] + pt.vy[i]*pt.vy[i] + pt.vz[i]*pt.vz[i];
-        initial_kinetic += 0.5f * pt.m[i] * v2;
-    }
-    
-    // Approximate potential energy (using forces)
-    for (int i = 0; i < pt.N; i++) {
-        float r = std::sqrt(pt.x[i]*pt.x[i] + pt.y[i]*pt.y[i] + pt.z[i]*pt.z[i]);
-        initial_potential -= pt.m[i] * pt.Mtot / (r + pt.h[i]);
-    }
-    
-    float initial_energy = initial_kinetic + initial_potential;
-    std::cout << "Initial energy: E = " << initial_energy 
-              << " (K = " << initial_kinetic << ", U = " << initial_potential << ")" << std::endl;
 
     // Main iteration
     int iter = 0;
@@ -113,21 +86,7 @@ int main(int argc, char** argv){
 
         pt.t += deltat;        
         ++iter;
-
-        // Periodic energy check (every 100 steps)
-        if (iter % 100 == 0) {
-            float kinetic = 0.0f;
-            for (int i = 0; i < pt.N; i++) {
-                float v2 = pt.vx[i]*pt.vx[i] + pt.vy[i]*pt.vy[i] + pt.vz[i]*pt.vz[i];
-                kinetic += 0.5f * pt.m[i] * v2;
-            }
-            // Energy drift check
-            float energy_error = std::abs((kinetic + initial_potential - initial_energy) / initial_energy);
-            if (energy_error > 0.1) {
-                std::cout << "Warning: Large energy drift detected: " << energy_error * 100 << "%" << std::endl;
-            }
-        }
-
+        
         if (iter % simsetup.num_per_dump == 0){
             ++current_idt;
             std::string timeindex = format_index(current_idt, 5);
@@ -139,6 +98,5 @@ int main(int argc, char** argv){
         }
     }
     std::cout << "============================== End simulation ==============================" << std::endl;
-    std::cout << "Total iterations: " << iter << std::endl;
     return 0;
 }
