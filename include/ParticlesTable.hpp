@@ -41,11 +41,8 @@ public:
     int N;
     float t = 0.0;
     float Mtot;
+    float bhTreeTheta = 0.5f;  // Default opening angle
     std::string SimulationTag;
-
-    // Table of particles(Internal)
-    
-    // Other scalar parameter(Internal)
 
     // Method declaration
     // Constructor
@@ -146,6 +143,14 @@ public:
     void drift(float scale = 1.0);
 
     /*
+        void setBHTreeTheta(float theta)
+    Set the Barnes-Hut opening angle parameter
+    Smaller values (e.g., 0.3) = more accurate but slower
+    Larger values (e.g., 1.0) = less accurate but faster
+    */
+    void setBHTreeTheta(float theta);
+
+    /*
         void particles_validation();
         
     Performs sanity checks and aggressive validation on particle data.
@@ -166,6 +171,12 @@ public:
     Returns an OctTree object
     */
     OctTree buildOctTree() const;
+
+    /*
+        bool is2D(float tolerance = 0.01f) const
+    Determine if particles are essentially in 2D (z-range is small)
+    */
+    bool is2D(float tolerance = 0.01f) const;
 
 protected:
     // Allocating vector
@@ -194,4 +205,16 @@ protected:
         - hid_t file_id: The HDF5 file handle created by H5Fcreate or H5Fopen
     */
     void _read_base_HDF5(hid_t file_id);
+    
+    /*
+        void calculateForceFromQuadNode(int particleIndex, QuadTree::Node* node, float theta)
+    Recursive tree traversal for 2D force calculation
+    */
+    // void calculateForceFromQuadNode(int particleIndex, QuadTree::Node* node, float theta);
+    
+    /*
+        void calculateForceFromOctNode(int particleIndex, OctTree::Node* node, float theta)
+    Recursive tree traversal for 3D force calculation
+    */
+    // void calculateForceFromOctNode(int particleIndex, OctTree::Node* node, float theta);
 };
