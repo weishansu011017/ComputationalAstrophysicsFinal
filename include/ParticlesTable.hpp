@@ -33,12 +33,14 @@ public:
     std::vector<float> _ax;                                     // x-Particle acceleration
     std::vector<float> _ay;                                     // y-Particle acceleration 
     std::vector<float> _az;                                     // z-Particle acceleration 
+    std::vector<float> _U;                                      // Potential energy
 
     // Other scalar parameter(External)
     int N;
     int dimension;
     float t = 0.0;
-    float Mtot;
+    float Mtot = 0.0;
+    float Utot = 0.0;
     float bhTreeTheta = 0.5f;
     std::string SimulationTag;
 
@@ -60,6 +62,7 @@ public:
         std::fill(_ax.begin(), _ax.end(), 0.0f);
         std::fill(_ay.begin(), _ay.end(), 0.0f);
         std::fill(_az.begin(), _az.end(), 0.0f);
+        std::fill(_U.begin(), _U.end(), 0.0f);
     }
     
     // Destructor
@@ -98,11 +101,18 @@ public:
     void calculate_h();
 
     /*
-        void calculate_a_dirnbody()
+        void calculate_dt()
 
     Calculate dt of each particles.
     */
     void calculate_dt();
+
+    /*
+        void calculate_Utot()
+
+    Calculate the total potential energy Utot and store into `Utot`
+    */
+    void calculate_Utot();
 
     /*
         void calculate_a_dirnbody()
@@ -194,7 +204,7 @@ protected:
         x.resize(N); y.resize(N); z.resize(N);
         vx.resize(N); vy.resize(N); vz.resize(N);
         m.resize(N); h.resize(N); dt.resize(N);
-        _ax.resize(N),_ay.resize(N),_az.resize(N);
+        _ax.resize(N),_ay.resize(N),_az.resize(N); _U.resize(N);
     }
 
     // === Base I/O Methods ===

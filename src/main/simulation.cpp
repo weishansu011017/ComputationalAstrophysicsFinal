@@ -54,7 +54,7 @@ int main(int argc, char** argv){
         // KDK algorithm
         integrator.calculate_a();
         integrator.kick(0.5);
-        integrator.drift(0.5);
+        integrator.drift(1.0);
         integrator.calculate_a();
         integrator.kick(0.5);
 
@@ -81,6 +81,7 @@ int main(int argc, char** argv){
         
         if (iter % simsetup.num_per_dump == 0){
             ++current_idt;
+            pt.calculate_Utot();
             std::string timeindex = format_index(current_idt, 5);
             std::string output = pt.SimulationTag + "_" + timeindex + ".h5";
             std::cout << "Dump: "<< output << std::endl;

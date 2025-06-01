@@ -45,6 +45,7 @@ void ParticlesTable::_write_base_HDF5(hid_t file_id) const {
     write_scalar("dimension", dimension, H5T_NATIVE_INT);
     write_scalar("bhTreeTheta", bhTreeTheta, H5T_NATIVE_FLOAT);
     write_scalar("Mtot", Mtot, H5T_NATIVE_FLOAT);
+    write_scalar("Utot", Utot, H5T_NATIVE_FLOAT);
     write_string("SimulationTag", SimulationTag);
 
     // Close Group
@@ -118,6 +119,7 @@ void ParticlesTable::_read_base_HDF5(hid_t file_id){
     // [Optional] Read Other parameters
     read_scalar("/params","t", H5T_NATIVE_FLOAT, &t);
     read_scalar("/params","Mtot", H5T_NATIVE_FLOAT, &Mtot);
+    read_scalar("/params","Utot", H5T_NATIVE_FLOAT, &Utot);
     read_string("/params", "SimulationTag", SimulationTag);
     read_scalar("/params", "dimension", H5T_NATIVE_INT, &dimension);
     read_scalar("/params", "bhTreeTheta",H5T_NATIVE_FLOAT, &bhTreeTheta);
@@ -218,6 +220,15 @@ void ParticlesTable::calculate_dt(){
     // NEED IMPLEMENT
 }
 
+void ParticlesTable::calculate_Utot(){
+    float Utemp = 0.0f;
+    for (int i = 0; i < N; ++i){
+        Utemp += _U[i];    
+    }
+    Utot = 0.5f * Utemp;
+}
+
+
 void ParticlesTable::calculate_a_dirnbody(){
     // Direct calculate acc
     #pragma omp parallel for 
@@ -225,6 +236,7 @@ void ParticlesTable::calculate_a_dirnbody(){
         float axtemp = 0.0;
         float aytemp = 0.0;
         float aztemp = 0.0;
+        float Utemp = 0.0;
         for (int j = 0; j < N; ++j){
             if (i == j) continue;
             float dx = x[j] - x[i];
@@ -237,10 +249,12 @@ void ParticlesTable::calculate_a_dirnbody(){
             axtemp += mjinvr3 * dx;
             aytemp += mjinvr3 * dy;
             aztemp += mjinvr3 * dz;
+            Utemp -= m[i] * m[j] * invr;
         }
         _ax[i] = axtemp;
         _ay[i] = aytemp;
         _az[i] = aztemp;
+        _U[i] = Utemp;
     }
 }
 
@@ -250,6 +264,7 @@ void ParticlesTable::calculate_a_dirnbody_2D(){
     for (int i = 0; i < N; ++i){
         float axtemp = 0.0;
         float aytemp = 0.0;
+        float Utemp = 0.0;
         for (int j = 0; j < N; ++j){
             if (i == j) continue;
             float dx = x[j] - x[i];
@@ -260,9 +275,11 @@ void ParticlesTable::calculate_a_dirnbody_2D(){
             float mjinvr3 = m[j] * invr3;
             axtemp += mjinvr3 * dx;
             aytemp += mjinvr3 * dy;
+            Utemp -= m[i] * m[j] * invr;
         }
         _ax[i] = axtemp;
         _ay[i] = aytemp;
+        _U[i] = Utemp;
     }
 }
 
@@ -311,6 +328,7 @@ void ParticlesTable::_calculate_a_OctNode(int idx, OctTree::Node* node){
             _ax[idx] += mjinvr3 * dxj;
             _ay[idx] += mjinvr3 * dyj;
             _az[idx] += mjinvr3 * dzj;
+            _U[idx] -= m[idx] * m[j] * invr;
         }
         return;
     }
@@ -338,6 +356,7 @@ void ParticlesTable::_calculate_a_OctNode(int idx, OctTree::Node* node){
             _ax[idx] += minvr3 * dx;
             _ay[idx] += minvr3 * dy;
             _az[idx] += minvr3 * dz;
+            _U[idx] -= m[idx] * node->totalMass * invr;
             return;
         }
     }
@@ -367,6 +386,7 @@ void ParticlesTable::_calculate_a_QuadNode(int idx, QuadTree::Node* node){
             
             _ax[idx] += mjinvr3 * dxj;
             _ay[idx] += mjinvr3 * dyj;
+            _U[idx] -= m[idx] * m[j] * invr;
         }
         return;
     }
@@ -391,6 +411,7 @@ void ParticlesTable::_calculate_a_QuadNode(int idx, QuadTree::Node* node){
             float minvr3 = node->totalMass * invr3;
             _ax[idx] += minvr3 * dx;
             _ay[idx] += minvr3 * dy;
+            _U[idx] -= m[idx] * node->totalMass * invr;
             return;
         }
     }
