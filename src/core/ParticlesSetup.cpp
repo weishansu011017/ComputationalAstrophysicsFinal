@@ -210,3 +210,74 @@ void ParticlesSetupIsotropic::_read_setupin_toml(const std::string& filename) {
     simulation_scale = 2 * rmax;
     dimension = 3;
 };
+
+// Case: ParticlesSetupPlummer
+
+void ParticlesSetupPlummer::_make_setupin_toml(const std::string& simulation_tag) const{
+    std::string filename = simulation_tag + ".setup";
+    std::ofstream fout(filename, std::ios::out | std::ios::trunc);
+    if (!fout.is_open()) {
+        std::cerr <<"Failed to open file for writing: " << filename << std::endl;
+        std::exit(1);
+    }
+    _write_toml_kvc(fout, "ICSetup", std::string("plummer"), "Initial Considion setup module: `Plummer` (DO NOT CHANGE THIS!!)");
+    fout << "[SimulationParameters]\n";
+    _write_toml_kvc(fout, "SimulationTag", simulation_tag, "Tag of simulation (Formatting the output into `Tag_00XXX.h5`)");
+    _write_toml_kvc(fout, "dimension", dimension, "Dimension of data.");
+    _write_toml_kvc(fout, "N", N, "Number of particles");
+    _write_toml_kvc(fout, "udist", udist, "Code unit of length in cgs");
+    _write_toml_kvc(fout, "umass", umass, "Code unit of mass in cgs");
+    _write_toml_kvc(fout, "softfactorx", softfactorx, "Softening factor for gravity (Suggestion: 0.01 < etax < 0.1)");
+    _write_toml_kvc(fout, "tsfactor", tsfactor, "Factor for estimating timestep (Suggestion: 0.1 < etat < 1.0)");
+    _write_toml_kvc(fout, "bhTreeTheta", bhTreeTheta, "Angle of BH Tree (Suggestion: 0.3 < theta < 1.0)");
+    fout << "\n[InitialConditions]\n";
+    fout << "# Initial Condition setup module: `Plummer` (Isotropic sphere with with Plummer density profile along spacial direction.)\n";
+    _write_toml_kvc(fout, "Mtot", Mtot, "Total mass IN CODE UNITS.");
+    _write_toml_kvc(fout, "rmax", rmax, "Maximum radius for particles IN CODE UNITS.");
+    _write_toml_kvc(fout, "scalefactor", scalefactor ,"Factor of scale length a = scale * rmax");
+
+    _write_toml_kvc(fout, "rcx", rcx, "x-position of center of particles distribution IN CODE UNITS.");
+    _write_toml_kvc(fout, "rcy", rcy, "y-position of center of particles distribution IN CODE UNITS.");
+    _write_toml_kvc(fout, "rcz", rcz, "z-position of center of particles distribution IN CODE UNITS. (If dimension == 2 then this argument is useless)");
+
+
+    fout << "\n";
+    fout.close();
+};
+
+void ParticlesSetupPlummer::_read_setupin_toml(const std::string& filename) {
+    toml::table config;
+    try {
+        config = toml::parse_file(filename);
+    } catch (const toml::parse_error& err) {
+        std::cerr << "TOML parsing error: " << std::string(err.description()) << std::endl;
+        std::exit(1);
+    }
+    std::string icsetup = config["ICSetup"].as_string()->get();
+    if (icsetup != "plummer") {
+        std::cerr << "Wrong setup error: The setup file should be consistent with \"plummer\", but got \"" << icsetup << "\"" << std::endl;
+        std::exit(1);
+    }
+
+    // ========= Simulation Parameters =========
+    N      = config["SimulationParameters"]["N"].value_or(N);
+    udist  = config["SimulationParameters"]["udist"].value_or(udist);
+    umass  = config["SimulationParameters"]["umass"].value_or(umass);
+    SimulationTag = config["SimulationParameters"]["SimulationTag"].value_or(SimulationTag);
+    softfactorx  = config["SimulationParameters"]["softfactorx"].value_or(softfactorx);
+    tsfactor  = config["SimulationParameters"]["tsfactor"].value_or(tsfactor);
+    bhTreeTheta = config["SimulationParameters"]["bhTreeTheta"].value_or(bhTreeTheta);
+    dimension = config["SimulationParameters"]["dimension"].value_or(dimension);
+
+    // ========= Initial Conditions =========
+    rmax = config["InitialConditions"]["rmax"].value_or(rmax);
+    Mtot = config["InitialConditions"]["Mtot"].value_or(Mtot);
+    scalefactor = config["InitialConditions"][scalefactor].value_or(scalefactor);
+    rcx = config["InitialConditions"]["rcx"].value_or(rcx);
+    rcy = config["InitialConditions"]["rcy"].value_or(rcy);
+    rcz = config["InitialConditions"]["rcz"].value_or(rcz);
+
+    // ========= Other quantities =========
+    // Simulation scale
+    simulation_scale = 2 * rmax;
+};

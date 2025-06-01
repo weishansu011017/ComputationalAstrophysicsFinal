@@ -15,7 +15,7 @@ int main(int argc, char** argv){
     }
     std::cout << "\n";
     std::cout << " Initial Condition Sampler\n";
-    std::cout << "     Version 0.0.2\n";
+    std::cout << "     Version 0.0.3\n";
 
     // Preparing input output argument
     std::string ICsetup = argv[1];
@@ -34,6 +34,10 @@ int main(int argc, char** argv){
             std::cout << " Select Initial Condition mode: `isotropic`\n";
             std::cout << "     (Isotropic sphere with power law distribution along spacial direction.)\n\n";
             setupptr = std::make_unique<ParticlesSetupIsotropic>(simulation_tag);
+        } else if (ICsetup == "plummer") {
+            std::cout << " Select Initial Condition mode: `plummer`\n";
+            std::cout << "     (Isotropic sphere with with Plummer density profile along spacial direction.)\n\n";
+            setupptr = std::make_unique<ParticlesSetupPlummer>(simulation_tag);
         } else {
             std::cerr << "Unsupported setup mode: " << ICsetup << std::endl;
             std::exit(1);

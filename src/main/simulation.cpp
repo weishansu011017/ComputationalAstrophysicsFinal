@@ -44,6 +44,8 @@ int main(int argc, char** argv){
     std::cout << "============================= Start simulation =============================" << std::endl;
     while (true) {
         if (pt.t >= simsetup.tmax){
+            std::cout << "Reached maximum simulation time (t = " << pt.t 
+            << " >= tmax = " << simsetup.tmax << "). Terminating." << std::endl;
             break;
         }
         // Timer start 
