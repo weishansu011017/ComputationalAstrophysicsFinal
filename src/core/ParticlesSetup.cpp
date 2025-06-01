@@ -53,7 +53,8 @@ void ParticlesSetupUniform::_make_setupin_toml(const std::string& simulation_tag
     std::string filename = simulation_tag + ".setup";
     std::ofstream fout(filename, std::ios::out | std::ios::trunc);
     if (!fout.is_open()) {
-        throw std::runtime_error("Failed to open file for writing: " + filename);
+        std::cerr << "Failed to open file for writing: " << filename << std::endl;
+        std::exit(1);
     }
     _write_toml_kvc(fout, "ICSetup", std::string("uniform"), "Initial Considion setup module: `Uniform` (DO NOT CHANGE THIS!!)");
     fout << "[SimulationParameters]\n";
@@ -63,6 +64,7 @@ void ParticlesSetupUniform::_make_setupin_toml(const std::string& simulation_tag
     _write_toml_kvc(fout, "umass", umass, "Code unit of mass in cgs");
     _write_toml_kvc(fout, "softfactorx", softfactorx, "Softening factor for gravity (Suggestion: 0.01 < etax < 0.1)");
     _write_toml_kvc(fout, "tsfactor", tsfactor, "Factor for estimating timestep (Suggestion: 0.1 < etat < 1.0)");
+    _write_toml_kvc(fout, "bhTreeTheta", bhTreeTheta, "Angle of BH Tree (Suggestion: 0.3 < theta < 1.0)");
     fout << "\n[InitialConditions]\n";
     fout << "# Initial Considion setup module: `Uniform` (Uniform box inside a given cube with given mass sampling range)\n";
     _write_toml_kvc(fout, "xmin", xmin, "Minimum x-position sampling for particles IN CODE UNITS.");
@@ -91,11 +93,13 @@ void ParticlesSetupUniform::_read_setupin_toml(const std::string& filename) {
     try {
         config = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        throw std::runtime_error("TOML parsing error: " + std::string(err.description()));
+        std::cerr << "TOML parsing error: " << std::string(err.description()) << std::endl;
+        std::exit(1);
     }
     std::string icsetup = config["ICSetup"].as_string()->get();
     if (icsetup != "uniform") {
-        throw std::runtime_error("Wrong setup error: The setup file should be consistent with \"uniform\", but got \"" + icsetup + "\"");
+        std::cerr << "Wrong setup error: The setup file should be consistent with \"uniform\", but got \"" << icsetup << "\"" << std::endl;
+        std::exit(1);
     }
 
     // ========= Simulation Parameters =========
@@ -105,6 +109,7 @@ void ParticlesSetupUniform::_read_setupin_toml(const std::string& filename) {
     SimulationTag = config["SimulationParameters"]["SimulationTag"].value_or(SimulationTag);
     softfactorx  = config["SimulationParameters"]["softfactorx"].value_or(softfactorx);
     tsfactor  = config["SimulationParameters"]["tsfactor"].value_or(tsfactor);
+    bhTreeTheta = config["SimulationParameters"]["bhTreeTheta"].value_or(bhTreeTheta);
 
     // ========= Initial Conditions =========
     xmin = config["InitialConditions"]["xmin"].value_or(xmin);
@@ -130,6 +135,7 @@ void ParticlesSetupUniform::_read_setupin_toml(const std::string& filename) {
     float dy = ymax - ymin;
     float dz = zmax - zmin;
     simulation_scale = sqrtf(dx * dx + dy * dy + dz * dz);
+    dimension = 3;
 };
 
 // Case: ParticlesSetupIsotropic
@@ -138,7 +144,8 @@ void ParticlesSetupIsotropic::_make_setupin_toml(const std::string& simulation_t
     std::string filename = simulation_tag + ".setup";
     std::ofstream fout(filename, std::ios::out | std::ios::trunc);
     if (!fout.is_open()) {
-        throw std::runtime_error("Failed to open file for writing: " + filename);
+        std::cerr <<"Failed to open file for writing: " << filename << std::endl;
+        std::exit(1);
     }
     _write_toml_kvc(fout, "ICSetup", std::string("isotropic"), "Initial Considion setup module: `Isotropic` (DO NOT CHANGE THIS!!)");
     fout << "[SimulationParameters]\n";
@@ -148,6 +155,7 @@ void ParticlesSetupIsotropic::_make_setupin_toml(const std::string& simulation_t
     _write_toml_kvc(fout, "umass", umass, "Code unit of mass in cgs");
     _write_toml_kvc(fout, "softfactorx", softfactorx, "Softening factor for gravity (Suggestion: 0.01 < etax < 0.1)");
     _write_toml_kvc(fout, "tsfactor", tsfactor, "Factor for estimating timestep (Suggestion: 0.1 < etat < 1.0)");
+    _write_toml_kvc(fout, "bhTreeTheta", bhTreeTheta, "Angle of BH Tree (Suggestion: 0.3 < theta < 1.0)");
     fout << "\n[InitialConditions]\n";
     fout << "# Initial Considion setup module: `Isotropic` (Isotropic sphere with power law distribution along spacial direction.)\n";
     _write_toml_kvc(fout, "rmax", rmax, "Maximum radius for particles IN CODE UNITS.");
@@ -169,11 +177,13 @@ void ParticlesSetupIsotropic::_read_setupin_toml(const std::string& filename) {
     try {
         config = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        throw std::runtime_error("TOML parsing error: " + std::string(err.description()));
+        std::cerr << "TOML parsing error: " << std::string(err.description()) << std::endl;
+        std::exit(1);
     }
     std::string icsetup = config["ICSetup"].as_string()->get();
     if (icsetup != "isotropic") {
-        throw std::runtime_error("Wrong setup error: The setup file should be consistent with \"isotropic\", but got \"" + icsetup + "\"");
+        std::cerr << "Wrong setup error: The setup file should be consistent with \"isotropic\", but got \"" << icsetup << "\"" << std::endl;
+        std::exit(1);
     }
 
     // ========= Simulation Parameters =========
@@ -183,6 +193,7 @@ void ParticlesSetupIsotropic::_read_setupin_toml(const std::string& filename) {
     SimulationTag = config["SimulationParameters"]["SimulationTag"].value_or(SimulationTag);
     softfactorx  = config["SimulationParameters"]["softfactorx"].value_or(softfactorx);
     tsfactor  = config["SimulationParameters"]["tsfactor"].value_or(tsfactor);
+    bhTreeTheta = config["SimulationParameters"]["bhTreeTheta"].value_or(bhTreeTheta);
 
     // ========= Initial Conditions =========
     rmax = config["InitialConditions"]["rmax"].value_or(rmax);
@@ -197,4 +208,5 @@ void ParticlesSetupIsotropic::_read_setupin_toml(const std::string& filename) {
     // ========= Other quantities =========
     // Simulation scale
     simulation_scale = 2 * rmax;
+    dimension = 3;
 };

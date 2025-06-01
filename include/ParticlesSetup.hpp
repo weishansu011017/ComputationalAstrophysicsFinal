@@ -24,6 +24,7 @@ public:
     // Other parameters
     float softfactorx = 0.02;
     float tsfactor = 0.2;
+    float bhTreeTheta = 0.5;
 
     // Destructor
     virtual ~ParticlesSetup() = default;
@@ -32,6 +33,7 @@ public:
     virtual SamplingFunctionsSet get_sampler() const = 0;
 
     // Other variable
+    int dimension = 3;
     std::string SimulationTag = "";
     float simulation_scale; 
 

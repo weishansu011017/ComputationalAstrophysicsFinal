@@ -52,7 +52,8 @@ void SimulationSetup::generate_parameters_file(const ParticlesSetup& setup, cons
 
     std::ofstream fout(paramspath, std::ios::out | std::ios::trunc);
     if (!fout.is_open()) {
-        throw std::runtime_error("Failed to open file for writing: " + paramspath);
+        std::cerr << "Failed to open file for writing: " << paramspath << std::endl;
+        std::exit(1);
     }
     fout << "[SimulationParameters]\n";
     _write_toml_kvc(fout, "input_file", input_file, "File for reading (Update whenever extract new dumpfile)");
@@ -75,7 +76,8 @@ void SimulationSetup::make_parameters_file(){
 
     std::ofstream fout(paramspath, std::ios::out | std::ios::trunc);
     if (!fout.is_open()) {
-        throw std::runtime_error("Failed to open file for writing: " + paramspath);
+        std::cerr << "Failed to open file for writing: " << paramspath << std::endl;
+        std::exit(1);
     }
     fout << "[SimulationParameters]\n";
     _write_toml_kvc(fout, "input_file", input_file, "File for reading (Update whenever extract new dumpfile)");
@@ -99,7 +101,8 @@ void SimulationSetup::_read_params_toml(const std::string& paramsfilepath){
     try {
         config = toml::parse_file(paramsfilepath);
     } catch (const toml::parse_error& err) {
-        throw std::runtime_error("TOML parsing error: " + std::string(err.description()));
+        std::cerr << "TOML parsing error: " << std::string(err.description()) << std::endl;
+        std::exit(1);
     }
     paramspath               = paramsfilepath;
     input_file               = config["SimulationParameters"]["input_file"].value_or(input_file);
@@ -118,6 +121,7 @@ int SimulationSetup::extract_current_index() {
     if (std::regex_search(input_file, match, pattern)) {
         return std::stoi(match[1]);
     } else {
-        throw std::runtime_error("Filename format not matched: " + input_file);
+        std::cerr << "Filename format not matched: " + input_file << std::endl;
+        std::exit(1);
     }
 }

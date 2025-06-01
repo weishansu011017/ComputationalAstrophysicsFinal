@@ -17,10 +17,12 @@ ParticlesTable setup_initial_condition(const ParticlesSetup& setup, UnitsTable u
     // Initializing container
     ParticlesTable pt(unit, setup.N);
     pt.SimulationTag = setup.SimulationTag;
+    pt.dimension = setup.dimension;
+    pt.bhTreeTheta = setup.bhTreeTheta;
 
     // Sampling particles properties
     // Initialize h
-    float happrox = setup.softfactorx * setup.simulation_scale * pow(pt.N, -1.0/3.0);
+    float happrox = setup.softfactorx * setup.simulation_scale * pow(pt.N, -1.0/pt.dimension);
 
     float Mtot = 0;
     for (int i = 0; i < pt.N; ++i) {

@@ -1,9 +1,11 @@
 #pragma once
 #include <hdf5.h>
 #include <cmath>
+#include <iostream>
+#include <cstdlib>
 #include "ParticlesSetup.hpp"
 #include "PhysicalConstants.hpp"
-#include <iostream>
+
 
 /*
 Table of unit for setup
@@ -19,9 +21,8 @@ public:
         : udist(_udist), umass(_umass)
     {
         if (_udist <= 0.0f || _umass <= 0.0f){
-            throw std::invalid_argument(
-                "Code units must be positive. Received udist = " + std::to_string(_udist)
-                + ", umass = " + std::to_string(_umass));
+            std::cerr << "Code units must be positive. Received udist = " << _udist << ", umass = " << std::to_string(_umass) << std::endl;
+            std::exit(1);
         }
         double dudist = _udist;
         double dumass = _umass;

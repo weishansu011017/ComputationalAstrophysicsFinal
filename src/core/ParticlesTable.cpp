@@ -2,14 +2,11 @@
 #include <hdf5.h>
 #include <iostream>
 #include <omp.h>
+#include <cstdlib>
 #include "UnitsTable.hpp"
 #include "ParticlesTable.hpp"
 #include "QuadTree.hpp"
 #include "OctTree.hpp"
-
-// Forward declarations for helper functions (implementation details)
-void calculateForceFromQuadNode(ParticlesTable* pt, int particleIndex, QuadTree::Node* node, float theta);
-void calculateForceFromOctNode(ParticlesTable* pt, int particleIndex, OctTree::Node* node, float theta);
 
 void ParticlesTable::_write_base_HDF5(hid_t file_id) const {
     // ============== /params/ ==============
@@ -45,6 +42,8 @@ void ParticlesTable::_write_base_HDF5(hid_t file_id) const {
     // Write Other parameter
     write_scalar("N", N, H5T_NATIVE_INT);
     write_scalar("t", t, H5T_NATIVE_FLOAT);
+    write_scalar("dimension", dimension, H5T_NATIVE_INT);
+    write_scalar("bhTreeTheta", bhTreeTheta, H5T_NATIVE_FLOAT);
     write_scalar("Mtot", Mtot, H5T_NATIVE_FLOAT);
     write_string("SimulationTag", SimulationTag);
 
@@ -120,6 +119,8 @@ void ParticlesTable::_read_base_HDF5(hid_t file_id){
     read_scalar("/params","t", H5T_NATIVE_FLOAT, &t);
     read_scalar("/params","Mtot", H5T_NATIVE_FLOAT, &Mtot);
     read_string("/params", "SimulationTag", SimulationTag);
+    read_scalar("/params", "dimension", H5T_NATIVE_INT, &dimension);
+    read_scalar("/params", "bhTreeTheta",H5T_NATIVE_FLOAT, &bhTreeTheta);
 
     // ============== /ParticlesTable/ ==============
     auto read_float_vector = [&](const char* group, const char* name, std::vector<float>& vec) {
@@ -159,8 +160,8 @@ void ParticlesTable::extract_particles_table(const std::string& filename) const 
     // ============== Create Empty HDF5 File ==============
     hid_t file_id = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     if (file_id < 0) {
-        std::cerr << "Failed to create HDF5 file.\n";
-        return;
+        std::cerr << "Failed to create HDF5 file." << std::endl;
+        std::exit(1);
     }
 
     // ============== Write base properties ==============
@@ -177,7 +178,8 @@ ParticlesTable ParticlesTable::read_particles_table(const std::string& filename)
     // ============== Open HDF5 File ==============
     hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
     if (file_id < 0) {
-        throw std::runtime_error("Failed to open HDF5 file for reading.");
+        std::cerr << "Failed to open HDF5 file for reading." << std::endl;
+        std::exit(1);
     }
 
     // ============== Read base properties ==============
@@ -186,7 +188,8 @@ ParticlesTable ParticlesTable::read_particles_table(const std::string& filename)
     hid_t dset = H5Dopen2(file_id, "/params/N", H5P_DEFAULT);
     if (dset < 0) {
         H5Fclose(file_id);
-        throw std::runtime_error("Missing /params/N in HDF5 file");
+        std::cerr << "Missing /params/N in HDF5 file";
+        std::exit(1);
     }
     H5Dread(dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &N);
     H5Dclose(dset);
@@ -241,39 +244,29 @@ void ParticlesTable::calculate_a_dirnbody(){
     }
 }
 
-// Helper function to determine if particles are essentially 2D
-bool ParticlesTable::is2D(float tolerance) const {
-    float zmin = z[0], zmax = z[0];
-    for (int i = 1; i < N; i++) {
-        if (z[i] < zmin) zmin = z[i];
-        if (z[i] > zmax) zmax = z[i];
+void ParticlesTable::calculate_a_dirnbody_2D(){
+    // Direct calculate acc
+    #pragma omp parallel for 
+    for (int i = 0; i < N; ++i){
+        float axtemp = 0.0;
+        float aytemp = 0.0;
+        for (int j = 0; j < N; ++j){
+            if (i == j) continue;
+            float dx = x[j] - x[i];
+            float dy = y[j] - y[i];
+            float dr2 = dx * dx + dy * dy + h[i] * h[i];
+            float invr = 1.0f / sqrtf(dr2);
+            float invr3 = invr * invr * invr;
+            float mjinvr3 = m[j] * invr3;
+            axtemp += mjinvr3 * dx;
+            aytemp += mjinvr3 * dy;
+        }
+        _ax[i] = axtemp;
+        _ay[i] = aytemp;
     }
-    float zrange = zmax - zmin;
-    
-    // Get x,y range for comparison
-    float xmin = x[0], xmax = x[0];
-    float ymin = y[0], ymax = y[0];
-    for (int i = 1; i < N; i++) {
-        if (x[i] < xmin) xmin = x[i];
-        if (x[i] > xmax) xmax = x[i];
-        if (y[i] < ymin) ymin = y[i];
-        if (y[i] > ymax) ymax = y[i];
-    }
-    float xrange = xmax - xmin;
-    float yrange = ymax - ymin;
-    float xyrange = std::max(xrange, yrange);
-    
-    // Consider 2D if z-range is less than tolerance times xy-range
-    return (zrange < tolerance * xyrange);
 }
 
 void ParticlesTable::calculate_a_BHtree(){
-    // Check if essentially 2D
-    if (is2D(0.01f)) {
-        calculate_a_BHtree_2D();
-        return;
-    }
-    
     // Build octree
     OctTree tree(bhTreeTheta);
     tree.buildFromParticles(*this);
@@ -281,12 +274,7 @@ void ParticlesTable::calculate_a_BHtree(){
     // Calculate forces for each particle
     #pragma omp parallel for
     for (int i = 0; i < N; i++) {
-        _ax[i] = 0.0f;
-        _ay[i] = 0.0f;
-        _az[i] = 0.0f;
-        
-        // Tree walk for particle i
-        calculateForceFromOctNode(this, i, tree.getRoot(), bhTreeTheta);
+        _calculate_a_OctNode(i, tree.getRoot());
     }
 }
 
@@ -298,135 +286,119 @@ void ParticlesTable::calculate_a_BHtree_2D(){
     // Calculate forces for each particle
     #pragma omp parallel for
     for (int i = 0; i < N; i++) {
-        _ax[i] = 0.0f;
-        _ay[i] = 0.0f;
-        _az[i] = 0.0f;
-        
-        // Tree walk for particle i
-        calculateForceFromQuadNode(this, i, tree.getRoot(), bhTreeTheta);
-    }
-}
-
-// Calculate force from a quadtree node
-void calculateForceFromQuadNode(ParticlesTable* pt, int particleIndex, QuadTree::Node* node, float theta) {
-    // Step 1: Safety checks
-    if (!node || node->totalMass == 0) return;
-    
-    // Step 2: Calculate displacement vector
-    // Get particle position
-    float px = pt->x[particleIndex];
-    float py = pt->y[particleIndex];
-    
-    // Calculate distance to node's center of mass
-    float dx = node->centerOfMass[0] - px;  // Vector from particle to COM
-    float dy = node->centerOfMass[1] - py;
-    float r2 = dx * dx + dy * dy;           // Distance squared
-    
-    if (r2 < 1e-8f) return;  // Skip if too close
-    
-    // Calculate cell size
-    float cellSize = std::max(node->bounds[1] - node->bounds[0], 
-                              node->bounds[3] - node->bounds[2]);
-    
-    // Opening angle criterion
-    float distance = std::sqrt(r2);
-    
-    // Step 3: Three-way decision tree
-    if (node->isLeaf()) {
-        // Leaf node - calculate forces from all particles in this leaf
-        for (int j : node->particleIndices) {
-            if (j == particleIndex) continue;  // Skip self
-            
-            // Newton's law of gravitation: F = G*m1*m2/r²
-            // In code units where G=1: F = m1*m2/r²
-            float dxj = pt->x[j] - px;
-            float dyj = pt->y[j] - py;
-            float r2j = dxj * dxj + dyj * dyj + pt->h[particleIndex] * pt->h[particleIndex];    // Add softening
-            float invr = 1.0f / std::sqrt(r2j);
-            float invr3 = invr * invr * invr;
-            float mjinvr3 = pt->m[j] * invr3;
-
-            // Acceleration: a = F/m = G*m_other/r² * direction
-            pt->_ax[particleIndex] += mjinvr3 * dxj;
-            pt->_ay[particleIndex] += mjinvr3 * dyj;
-        }
-    } else if (cellSize / distance < theta) {
-        // Node is far enough - use center of mass approximation
-        r2 += pt->h[particleIndex] * pt->h[particleIndex];  // Add softening
-        float invr = 1.0f / std::sqrt(r2);
-        float invr3 = invr * invr * invr;
-        float minvr3 = node->totalMass * invr3;
-        
-        // Treat entire node as single particle at center of mass
-        pt->_ax[particleIndex] += minvr3 * dx;
-        pt->_ay[particleIndex] += minvr3 * dy;
-    } else {
-        // Node is too close - recurse into children
-        for (int i = 0; i < 4; i++) {
-            calculateForceFromQuadNode(pt, particleIndex, node->children[i], theta);
-        }
+        _calculate_a_QuadNode(i, tree.getRoot());
     }
 }
 
 // Calculate force from an octree node
-void calculateForceFromOctNode(ParticlesTable* pt, int particleIndex, OctTree::Node* node, float theta) {
-    // Same logic as QuadTree but with 3D coordinates
+void ParticlesTable::_calculate_a_OctNode(int idx, OctTree::Node* node){
+    // If no particles in the node ==> return
     if (!node || node->totalMass == 0) return;
+
+    // Leaf node - calculate forces from all particles in this leaf
+    if (node->isLeaf()){
+        for (int j : node->particleIndices) {
+            if (j == idx) continue;  // Skip self
+            
+            float dxj = x[j] - x[idx];
+            float dyj = y[j] - y[idx];
+            float dzj = z[j] - z[idx];
+            float r2j = dxj * dxj + dyj * dyj + dzj * dzj + h[idx] * h[idx];
+            float invr = 1.0f / std::sqrt(r2j);
+            float invr3 = invr * invr * invr;
+            float mjinvr3 = m[j] * invr3;
+            
+            _ax[idx] += mjinvr3 * dxj;
+            _ay[idx] += mjinvr3 * dyj;
+            _az[idx] += mjinvr3 * dzj;
+        }
+        return;
+    }
     
-    // Get particle position
-    float px = pt->x[particleIndex];
-    float py = pt->y[particleIndex];
-    float pz = pt->z[particleIndex];
-    
-    // Calculate distance to node's center of mass
-    float dx = node->centerOfMass[0] - px;
-    float dy = node->centerOfMass[1] - py;
-    float dz = node->centerOfMass[2] - pz;
-    float r2 = dx * dx + dy * dy + dz * dz;
-    
-    if (r2 < 1e-8f) return;  // Skip if too close
-    
+    // Not Leaf node: recursion or COM approx
     // Calculate cell size
     float cellSize = std::max({node->bounds[1] - node->bounds[0],
                                node->bounds[3] - node->bounds[2],
                                node->bounds[5] - node->bounds[4]});
     
-    // Opening angle criterion
-    float distance = std::sqrt(r2);
+
+    // Calculate distance to node's center of mass
+    float dx = node->centerOfMass[0] - x[idx];
+    float dy = node->centerOfMass[1] - y[idx];
+    float dz = node->centerOfMass[2] - z[idx];
+    float r2 = dx * dx + dy * dy + dz * dz;
     
-    if (node->isLeaf()) {
-        // Leaf node - calculate forces from all particles in this leaf
-        for (int j : node->particleIndices) {
-            if (j == particleIndex) continue;  // Skip self
-            
-            float dxj = pt->x[j] - px;
-            float dyj = pt->y[j] - py;
-            float dzj = pt->z[j] - pz;
-            float r2j = dxj * dxj + dyj * dyj + dzj * dzj + pt->h[particleIndex] * pt->h[particleIndex];
-            float invr = 1.0f / std::sqrt(r2j);
-            float invr3 = invr * invr * invr;
-            float mjinvr3 = pt->m[j] * invr3;
-            
-            pt->_ax[particleIndex] += mjinvr3 * dxj;
-            pt->_ay[particleIndex] += mjinvr3 * dyj;
-            pt->_az[particleIndex] += mjinvr3 * dzj;
-        }
-    } else if (cellSize / distance < theta) {
-        // Node is far enough - use center of mass approximation
-        r2 += pt->h[particleIndex] * pt->h[particleIndex];  // Add softening
-        float invr = 1.0f / std::sqrt(r2);
-        float invr3 = invr * invr * invr;
-        float minvr3 = node->totalMass * invr3;
-        
-        pt->_ax[particleIndex] += minvr3 * dx;
-        pt->_ay[particleIndex] += minvr3 * dy;
-        pt->_az[particleIndex] += minvr3 * dz;
-    } else {
-        // Node is too close - recurse into children
-        for (int i = 0; i < 8; i++) {
-            calculateForceFromOctNode(pt, particleIndex, node->children[i], theta);
+    if (r2 > 1e-8f) {
+        float distance = std::sqrt(r2);    // Opening angle criterion
+        if (cellSize / distance < bhTreeTheta) {
+            r2 += h[idx]*h[idx];
+            float invr  = 1.0f / std::sqrt(r2);
+            float invr3 = invr*invr*invr;
+            float minvr3 = node->totalMass * invr3;
+            _ax[idx] += minvr3 * dx;
+            _ay[idx] += minvr3 * dy;
+            _az[idx] += minvr3 * dz;
+            return;
         }
     }
+    // Other cases: Recursion (r <= 1e-8f or Node is too close)
+    for (int i = 0; i < 8; i++) {
+        _calculate_a_OctNode(idx, node->children[i]);
+    }
+    return;
+}
+
+// Calculate force from an quadtree node
+void ParticlesTable::_calculate_a_QuadNode(int idx, QuadTree::Node* node){
+    // If no particles in the node ==> return
+    if (!node || node->totalMass == 0) return;
+
+    // Leaf node - calculate forces from all particles in this leaf
+    if (node->isLeaf()){
+        for (int j : node->particleIndices) {
+            if (j == idx) continue;  // Skip self
+            
+            float dxj = x[j] - x[idx];
+            float dyj = y[j] - y[idx];
+            float r2j = dxj * dxj + dyj * dyj + h[idx] * h[idx];
+            float invr = 1.0f / std::sqrt(r2j);
+            float invr3 = invr * invr * invr;
+            float mjinvr3 = m[j] * invr3;
+            
+            _ax[idx] += mjinvr3 * dxj;
+            _ay[idx] += mjinvr3 * dyj;
+        }
+        return;
+    }
+    
+    // Not Leaf node: recursion or COM approx
+    // Calculate cell size
+    float cellSize = std::max({node->bounds[1] - node->bounds[0],
+                               node->bounds[3] - node->bounds[2]});
+    
+
+    // Calculate distance to node's center of mass
+    float dx = node->centerOfMass[0] - x[idx];
+    float dy = node->centerOfMass[1] - y[idx];
+    float r2 = dx * dx + dy * dy;
+    
+    if (r2 > 1e-8f) {
+        float distance = std::sqrt(r2);    // Opening angle criterion
+        if (cellSize / distance < bhTreeTheta) {
+            r2 += h[idx]*h[idx];
+            float invr  = 1.0f / std::sqrt(r2);
+            float invr3 = invr*invr*invr;
+            float minvr3 = node->totalMass * invr3;
+            _ax[idx] += minvr3 * dx;
+            _ay[idx] += minvr3 * dy;
+            return;
+        }
+    }
+    // Other cases: Recursion (r <= 1e-8f or Node is too close)
+    for (int i = 0; i < 4; i++) {
+        _calculate_a_QuadNode(idx, node->children[i]);
+    }
+    return;
 }
 
 void ParticlesTable::kick(float scale) {
@@ -440,6 +412,15 @@ void ParticlesTable::kick(float scale) {
     }
 }
 
+void ParticlesTable::kick_2D(float scale) {
+    #pragma omp parallel for
+    for (int i = 0; i < N; ++i) {
+        if (h[i] > 0.0f) { 
+            vx[i] += scale * _ax[i] * dt[i];
+            vy[i] += scale * _ay[i] * dt[i];
+        }
+    }
+}
 
 void ParticlesTable::drift(float scale){
     #pragma omp parallel for
@@ -452,12 +433,16 @@ void ParticlesTable::drift(float scale){
     }
 }
 
-// Optional: Add method to set theta parameter
-void ParticlesTable::setBHTreeTheta(float theta) {
-    bhTreeTheta = theta;
+void ParticlesTable::drift_2D(float scale){
+    #pragma omp parallel for
+    for (int i = 0; i < N; ++i) {
+        if (h[i] > 0.0f) { 
+            x[i] += scale * vx[i] * dt[i];
+            y[i] += scale * vy[i] * dt[i];
+        }
+    }
 }
 
-// Optional: Add method to validate particles
 void ParticlesTable::particles_validation(){
     // Check for NaN or infinite values
     for (int i = 0; i < N; i++) {

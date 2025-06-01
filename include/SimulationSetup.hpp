@@ -2,6 +2,7 @@
 
 #include <string>
 #include <iostream>
+#include <cstdlib>
 #include "UnitsTable.hpp"
 #include "ParticlesSetup.hpp"
 #include "InitialConditionSetup.hpp"
@@ -31,7 +32,8 @@ public:
             std::cout << "Reading parameters from " << paramspath << std::endl;
             _read_params_toml(paramspath);
         } else {
-            throw std::runtime_error("ParametersfileNotfound: The parameters file "+ paramspath +" is not in the current location. Please check again!");
+            std::cerr << "ParametersfileNotfound: The parameters file "+ paramspath +" is not in the current location. Please check again!" << std::endl;
+            std::exit(1);
         }
     }
     // Destructor

@@ -35,7 +35,8 @@ int main(int argc, char** argv){
             std::cout << "     (Isotropic sphere with power law distribution along spacial direction.)\n\n";
             setupptr = std::make_unique<ParticlesSetupIsotropic>(simulation_tag);
         } else {
-            throw std::runtime_error("Unsupported setup mode: " + ICsetup);
+            std::cerr << "Unsupported setup mode: " << ICsetup << std::endl;
+            std::exit(1);
         }
     } catch (const std::exception& e) {
         std::cerr << "Fatal error: " << e.what() << std::endl;

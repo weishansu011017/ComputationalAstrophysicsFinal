@@ -1,13 +1,10 @@
 #pragma once
 
-#include "UnitsTable.hpp"
 #include <vector>
 #include <string>
-#include <unordered_map>
-
-// Forward declarations
-class QuadTree;
-class OctTree;
+#include "UnitsTable.hpp"
+#include "QuadTree.hpp"
+#include "OctTree.hpp"
 
 /*
     class ParticlesTable
@@ -39,9 +36,10 @@ public:
 
     // Other scalar parameter(External)
     int N;
+    int dimension;
     float t = 0.0;
     float Mtot;
-    float bhTreeTheta = 0.5f;  // Default opening angle
+    float bhTreeTheta = 0.5f;
     std::string SimulationTag;
 
     // Method declaration
@@ -92,7 +90,6 @@ public:
     */
     static ParticlesTable read_particles_table(const std::string& filename);
     
-
     /*
         void calculate_h();
 
@@ -113,6 +110,13 @@ public:
     Calculate the acceleration by direct N-body method
     */
     void calculate_a_dirnbody();
+
+    /*
+        void calculate_a_dirnbody_2D()
+
+    Calculate the acceleration by direct N-body method in 2D
+    */
+    void calculate_a_dirnbody_2D();
 
     /*
         void calculate_a_BHtree()
@@ -143,12 +147,20 @@ public:
     void drift(float scale = 1.0);
 
     /*
-        void setBHTreeTheta(float theta)
-    Set the Barnes-Hut opening angle parameter
-    Smaller values (e.g., 0.3) = more accurate but slower
-    Larger values (e.g., 1.0) = less accurate but faster
+        void kick_2D();
+    Do a kick operation to all of the active particles
+    ## Input
+        - float scale: scale of dt (stepping ... + scale * dt)
     */
-    void setBHTreeTheta(float theta);
+    void kick_2D(float scale = 1.0);
+
+    /*
+        void drift();
+    Do a drift operation to all of the active particles
+    ## Input
+        - float scale: scale of dt (stepping ... + scale * dt)
+    */
+    void drift_2D(float scale = 1.0);
 
     /*
         void particles_validation();
@@ -160,6 +172,7 @@ public:
   
     /*
         QuadTree buildQuadTree() const
+
     Build a quadtree from current particle positions
     Returns a QuadTree object
     */
@@ -167,16 +180,12 @@ public:
 
     /*
         OctTree buildOctTree() const
+
     Build an octree from current particle positions
     Returns an OctTree object
     */
     OctTree buildOctTree() const;
 
-    /*
-        bool is2D(float tolerance = 0.01f) const
-    Determine if particles are essentially in 2D (z-range is small)
-    */
-    bool is2D(float tolerance = 0.01f) const;
 
 protected:
     // Allocating vector
@@ -207,14 +216,17 @@ protected:
     void _read_base_HDF5(hid_t file_id);
     
     /*
-        void calculateForceFromQuadNode(int particleIndex, QuadTree::Node* node, float theta)
-    Recursive tree traversal for 2D force calculation
+        void _calculate_a_OctNode(int idx, QuadTree::Node* node);
+
+    (Internel method) Calculate acc from a octree node for a sigle particles
     */
-    // void calculateForceFromQuadNode(int particleIndex, QuadTree::Node* node, float theta);
-    
+    void _calculate_a_OctNode(int idx, OctTree::Node* node);
+
+
     /*
-        void calculateForceFromOctNode(int particleIndex, OctTree::Node* node, float theta)
-    Recursive tree traversal for 3D force calculation
+        void _calculate_a_QuadNode(int idx, QuadTree::Node* node)
+
+    (Internel method) Calculate acc from a quadtree node for a sigle particles in 2D
     */
-    // void calculateForceFromOctNode(int particleIndex, OctTree::Node* node, float theta);
+    void _calculate_a_QuadNode(int idx, QuadTree::Node* node);
 };

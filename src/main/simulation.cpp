@@ -10,6 +10,7 @@
 #include "ParticlesTable.hpp"
 #include "PhysicalConstants.hpp"
 #include "SimulationSetup.hpp"
+#include "Integrator.hpp"
 
 int main(int argc, char** argv){
     // Checking arguments
@@ -33,19 +34,8 @@ int main(int argc, char** argv){
     int current_idt = simsetup.extract_current_index();
     ParticlesTable pt = ParticlesTable::read_particles_table(simsetup.input_file);
 
-    // Specify the calculate_a() function
-    std::function<void()> ptcalculate_a;
-    if (simsetup.a_mode == 0){
-        ptcalculate_a = [&pt]() {
-            pt.calculate_a_dirnbody();
-        };
-    } else if (simsetup.a_mode == 1) {
-        ptcalculate_a = [&pt]() {
-            pt.calculate_a_BHtree();
-        };
-    } else {
-        throw std::runtime_error("The a_mode is not support to this program!");
-    }
+    // Specify the Integrator
+    Integrator integrator = wrap_Integrator(&pt, &simsetup);
 
     // Other option
 
@@ -60,11 +50,11 @@ int main(int argc, char** argv){
         auto start = std::chrono::high_resolution_clock::now();
 
         // KDK algorithm
-        ptcalculate_a();
-        pt.kick(0.5);
-        pt.drift(1.0);
-        ptcalculate_a();
-        pt.kick(0.5);
+        integrator.calculate_a();
+        integrator.kick(0.5);
+        integrator.drift(0.5);
+        integrator.calculate_a();
+        integrator.kick(0.5);
 
         // Sanity check
         pt.particles_validation();

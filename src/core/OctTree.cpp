@@ -2,6 +2,7 @@
 #include "ParticlesTable.hpp"
 #include <iostream>
 #include <algorithm>
+#include <cstdlib>
 
 // Node implementation
 OctTree::Node::Node(float xmin, float xmax, float ymin, float ymax, float zmin, float zmax)
@@ -186,7 +187,7 @@ void OctTree::saveToFile(const std::string& filename) const {
     std::ofstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Failed to open " << filename << " for writing\n";
-        return;
+        std::exit(1);
     }
     
     file << "OCTREE\n";

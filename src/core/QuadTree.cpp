@@ -167,7 +167,7 @@ void QuadTree::saveToFile(const std::string& filename) const {
     std::ofstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Failed to open " << filename << " for writing\n";
-        return;
+        std::exit(1);
     }
     
     file << "QUADTREE\n";
