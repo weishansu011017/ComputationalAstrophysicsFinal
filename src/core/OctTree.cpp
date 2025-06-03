@@ -1,225 +1,222 @@
+#include <vector>
+#include <numeric> 
+#include <functional>  
 #include "OctTree.hpp"
-#include "ParticlesTable.hpp"
-#include <iostream>
-#include <algorithm>
-#include <cstdlib>
 
-// Node implementation
-OctTree::Node::Node(float xmin, float xmax, float ymin, float ymax, float zmin, float zmax)
-    : totalMass(0.0f) {
-    bounds[0] = xmin; bounds[1] = xmax; bounds[2] = ymin; 
-    bounds[3] = ymax; bounds[4] = zmin; bounds[5] = zmax;
-    centerOfMass[0] = centerOfMass[1] = centerOfMass[2] = 0.0f;
-    std::fill(children, children + 8, nullptr);
+void OctNode::subdivide(std::vector<OctNode>& nodes_list){
+    // Center of the current node
+    float xmid = 0.5f * (xmin + xmax);
+    float ymid = 0.5f * (ymin + ymax);
+    float zmid = 0.5f * (zmin + zmax);
+
+    // Get the baseidx
+    int baseidx = int(nodes_list.size());
+
+    // Construct 4-new node in the node_list
+    nodes_list.emplace_back(xmid, xmax, ymid, ymax, zmax, zmid);    // NEU(0)
+    nodes_list.emplace_back(xmin, xmid, ymid, ymax, zmax, zmid);    // NWU(1)
+    nodes_list.emplace_back(xmin, xmid, ymin, ymid, zmax, zmid);    // SWU(2)
+    nodes_list.emplace_back(xmid, xmax, ymin, ymid, zmax, zmid);    // SEU(3)
+    nodes_list.emplace_back(xmid, xmax, ymid, ymax, zmid, zmin);    // NED(4)
+    nodes_list.emplace_back(xmin, xmid, ymid, ymax, zmid, zmin);    // NWD(5)
+    nodes_list.emplace_back(xmin, xmid, ymin, ymid, zmid, zmin);    // SWD(6)
+    nodes_list.emplace_back(xmid, xmax, ymin, ymid, zmid, zmin);    // SED(7)
+
+    // Update childrens
+    children[0] = baseidx + 0;
+    children[1] = baseidx + 1;
+    children[2] = baseidx + 2;
+    children[3] = baseidx + 3;
+    children[4] = baseidx + 4;
+    children[5] = baseidx + 5;
+    children[6] = baseidx + 6;
+    children[7] = baseidx + 7;
+
 }
 
-OctTree::Node::~Node() {
-    for (int i = 0; i < 8; i++) {
-        delete children[i];
+void OctTree::reserve_nodes(std::size_t N){
+    std::size_t est_nodes = N * 8;
+
+    nodes_list.reserve(est_nodes);
+    x.reserve(N);
+    y.reserve(N);
+    z.reserve(N);
+    m.reserve(N);
+    order.reserve(N);
+}
+
+void OctTree::update_Mtot_COM(){
+    for (auto& n : nodes_list) {
+        n.Mtot = 0.0f;
+        n.COMx = 0.0f;
+        n.COMy = 0.0f;
+        n.COMz = 0.0f;
     }
-}
 
-int OctTree::Node::getOctant(float x, float y, float z) const {
-    float midX = (bounds[0] + bounds[1]) / 2;
-    float midY = (bounds[2] + bounds[3]) / 2; 
-    float midZ = (bounds[4] + bounds[5]) / 2;
-    
-    int oct = 0;
-    if (x >= midX) oct |= 1;  // East
-    if (y >= midY) oct |= 2;  // North  
-    if (z >= midZ) oct |= 4;  // Up
-    return oct;
-}
+    std::function<void(int)> postorder = [&](int idx){
+        OctNode& node = nodes_list[idx];
 
-void OctTree::Node::insert(int particleIndex, const ParticlesTable& particles) {
-    if (isLeaf()) {
-        particleIndices.push_back(particleIndex);
         
-        // If this leaf now has more than 1 particle, subdivide
-        if (particleIndices.size() > 1) {
-            // Check if we can still subdivide (avoid infinite recursion for identical positions)
-            float width = bounds[1] - bounds[0];
-            float height = bounds[3] - bounds[2];
-            float depth = bounds[5] - bounds[4];
-            const float MIN_SIZE = 1e-8f;  // Minimum cell size to prevent infinite subdivision
-            
-            if (width > MIN_SIZE && height > MIN_SIZE && depth > MIN_SIZE) {
-                // Create children
-                float midX = (bounds[0] + bounds[1]) / 2;
-                float midY = (bounds[2] + bounds[3]) / 2;
-                float midZ = (bounds[4] + bounds[5]) / 2;
-                
-                for (int i = 0; i < 8; i++) {
-                    float xmin = (i & 1) ? midX : bounds[0];
-                    float xmax = (i & 1) ? bounds[1] : midX;
-                    float ymin = (i & 2) ? midY : bounds[2]; 
-                    float ymax = (i & 2) ? bounds[3] : midY;
-                    float zmin = (i & 4) ? midZ : bounds[4];
-                    float zmax = (i & 4) ? bounds[5] : midZ;
-                    
-                    children[i] = new Node(xmin, xmax, ymin, ymax, zmin, zmax);
-                }
-                
-                // Redistribute particles to children using insert (for recursive subdivision)
-                std::vector<int> tempIndices = particleIndices;
-                particleIndices.clear();
-                
-                for (int idx : tempIndices) {
-                    int oct = getOctant(particles.x[idx], particles.y[idx], particles.z[idx]);
-                    children[oct]->insert(idx, particles);
-                }
+        if (node.isLeaf()) {
+            float M = 0.0f, Cx = 0.0f, Cy = 0.0f, Cz = 0.0f;
+            for (int k = 0; k < node.pcount; ++k) {
+                int pid  = order[node.ParticlesLocateidx + k];
+                float mj = m[pid];
+                M  += mj;
+                Cx += mj * x[pid];
+                Cy += mj * y[pid];
+                Cz += mj * z[pid];
             }
-            // If cell is too small, keep particles in this leaf
-        }
-    } else {
-        // Internal node - pass to appropriate child
-        int oct = getOctant(particles.x[particleIndex], particles.y[particleIndex], particles.z[particleIndex]);
-        children[oct]->insert(particleIndex, particles);
-    }
-}
-
-void OctTree::Node::calculateCenterOfMass(const ParticlesTable& particles) {
-    if (isLeaf()) {
-        totalMass = 0.0f;
-        centerOfMass[0] = centerOfMass[1] = centerOfMass[2] = 0.0f;
-        
-        for (int idx : particleIndices) {
-            float mass = particles.m[idx];
-            centerOfMass[0] += particles.x[idx] * mass;
-            centerOfMass[1] += particles.y[idx] * mass;
-            centerOfMass[2] += particles.z[idx] * mass;
-            totalMass += mass;
-        }
-        
-        if (totalMass > 0) {
-            centerOfMass[0] /= totalMass;
-            centerOfMass[1] /= totalMass;
-            centerOfMass[2] /= totalMass;
-        }
-    } else {
-        totalMass = 0.0f;
-        centerOfMass[0] = centerOfMass[1] = centerOfMass[2] = 0.0f;
-        
-        for (int i = 0; i < 8; i++) {
-            if (children[i]) {
-                children[i]->calculateCenterOfMass(particles);
-                float mass = children[i]->totalMass;
-                centerOfMass[0] += children[i]->centerOfMass[0] * mass;
-                centerOfMass[1] += children[i]->centerOfMass[1] * mass;
-                centerOfMass[2] += children[i]->centerOfMass[2] * mass;
-                totalMass += mass;
+            node.Mtot = M;
+            if (M > 0.0f) {
+                node.COMx = Cx / M;
+                node.COMy = Cy / M;
+                node.COMz = Cz / M;
             }
+            return;
         }
-        
-        if (totalMass > 0) {
-            centerOfMass[0] /= totalMass;
-            centerOfMass[1] /= totalMass;
-            centerOfMass[2] /= totalMass;
+
+        float M = 0.0f, Cx = 0.0f, Cy = 0.0f, Cz = 0.0f;
+        for (int q = 0; q < 8; ++q) {
+            int cidx = node.children[q];
+            if (cidx < 0) continue;         
+            postorder(cidx);               
+            const OctNode& c = nodes_list[cidx];
+            M  += c.Mtot;
+            Cx += c.Mtot * c.COMx;
+            Cy += c.Mtot * c.COMy;
+            Cz += c.Mtot * c.COMz;
+        }
+        node.Mtot = M;
+        if (M > 0.0f) {
+            node.COMx = Cx / M;
+            node.COMy = Cy / M;
+            node.COMz = Cz / M;
+        }
+    };
+    postorder(root_idx);
+}
+
+void OctTree::build_tree(const std::vector<float>& xin, const std::vector<float>& yin, const std::vector<float>& zin, const std::vector<float>& mass){
+    if (xin.size()!=yin.size() || xin.size()!=zin.size() || xin.size()!=mass.size()){
+        throw std::runtime_error("x/y/z/mass size mismatch");
+    }
+    const std::size_t N = xin.size();
+    x = xin;
+    y = yin;
+    z = zin;
+    m = mass;
+    order.resize(N);
+    std::iota(order.begin(), order.end(), 0);
+
+    float xmin = *std::min_element(x.begin(),x.end());
+    float xmax = *std::max_element(x.begin(),x.end());
+    float ymin = *std::min_element(y.begin(),y.end());
+    float ymax = *std::max_element(y.begin(),y.end());
+    float zmin = *std::min_element(z.begin(),z.end());
+    float zmax = *std::max_element(z.begin(),z.end());
+    float eps  = 1e-5f*std::max(std::max(xmax-xmin, ymax-ymin), zmax-zmin);   // prevent partcles fall outside
+    xmin-=eps; xmax+=eps; ymin-=eps; ymax+=eps; zmin-=eps; zmax+=eps;
+
+    
+    nodes_list.clear();
+    nodes_list.reserve(8 * N);
+    nodes_list.emplace_back(xmin,xmax,ymin,ymax,zmin,zmax);
+    root_idx = 0;
+    OctNode& root = nodes_list[0];
+    root.ParticlesLocateidx = 0;
+    root.pcount = int(N);
+
+    // Build tree
+    std::vector<int> stack{root_idx};
+    while(!stack.empty()){
+        int ni = stack.back(); stack.pop_back();
+        OctNode& node = nodes_list[ni];
+        if (node.pcount <= leafNmax) continue; // Reach leaf node: Do not need to seperate again
+
+        // ---------- Seperate 8 Octant ----------
+        int start = node.ParticlesLocateidx;
+        int count = node.pcount;
+        float xm  = 0.5f * (node.xmin + node.xmax);
+        float ym  = 0.5f * (node.ymin + node.ymax);
+        float zm  = 0.5f * (node.zmin + node.zmax);
+
+        // Target: NEU(0) | NWU(1) | SWU(2) | SEU(3) | NED(4) | NWD(5) | SWD(6) | SED(7)
+        // Get the first index of this node in the order array
+        auto first = order.begin() + start;
+        // Get the last index of this node in the order array (start --- count)
+        auto last  = first + count;
+
+        // Partition: Move the element that satisfies the condition to front, the others goes back. This function return the mid, which satisfies that first-(satisfy region)-mid-(non-satisfy region)-last
+        // First move z
+        auto lowerIt = std::partition(first, last, [&](int id){
+            return z[id] >= zm;
+        });
+        // For z > zm move NEU & NWU to front
+        auto nenwuEndIt = std::partition(first, lowerIt, [&](int id){
+            return y[id] >= ym;
+        });
+        // Move NEU | NWU
+        auto neuEndIt = std::partition(first, nenwuEndIt, [&](int id){
+            return x[id] >= xm;
+        });
+        // Next, deal with SEU & SWU. Move SW|SE 
+        auto swuEndIt = std::partition(nenwuEndIt, lowerIt, [&](int id){
+            return x[id] < xm;
+        });
+         // Same process but for D
+        auto nenwdEndIt = std::partition(lowerIt, last, [&](int id){
+            return y[id] >= ym;
+        });
+        // Move NED | NWD
+        auto nedEndIt = std::partition(lowerIt, nenwdEndIt, [&](int id){
+            return x[id] >= xm;
+        });
+        // Next, deal with SED & SWD. Move SWD|SED 
+        auto swdEndIt = std::partition(nenwdEndIt, last, [&](int id){
+            return x[id] < xm;
+        });
+
+        // Now, the order array is now been seperate into four quadant: order.begin()-##(NE)##-neEndIt-##(NW)##-lowerIt-##(SW)##-swEndIt-##(SE)##-last
+        int qptr[8];
+        qptr[0] = int(neuEndIt - order.begin());      // NEU
+        qptr[1] = int(nenwuEndIt - order.begin());    // NWU
+        qptr[2] = int(swuEndIt - order.begin());      // SWU
+        qptr[3] = int(lowerIt - order.begin());       // SEU 
+        qptr[4] = int(nedEndIt - order.begin());      // NED
+        qptr[5] = int(nenwdEndIt - order.begin());    // NWD
+        qptr[6] = int(swdEndIt - order.begin());      // SWD
+        qptr[7] = int(last - order.begin());          // SED 
+
+
+        // Generate Node
+        int base = int(nodes_list.size());
+        node.children[0]=node.children[1]=node.children[2]=node.children[3]=node.children[4]=node.children[5]=node.children[6]=node.children[7]=-1;
+
+        int childStart = start;
+        for (int q = 0; q<8; ++q){
+            int childCount = qptr[q]-childStart; // Estimate howmuch particles is inside the child node
+            if (childCount>0){
+                float cx0, cx1, cy0, cy1, cz0, cz1;
+                switch(q){   // NEU,NWU,SWU,SEU,NED,NWD,SWD,SED
+                    case 0: cx0=xm; cx1=node.xmax; cy0=ym;  cy1=node.ymax; cz0 = zm; cz1 = node.zmax; break;   
+                    case 1: cx0=node.xmin; cx1=xm; cy0=ym;  cy1=node.ymax; cz0 = zm; cz1 = node.zmax; break;
+                    case 2: cx0=node.xmin; cx1=xm; cy0=node.ymin; cy1=ym; cz0 = zm; cz1 = node.zmax;  break;
+                    case 3: cx0=xm; cx1=node.xmax; cy0=node.ymin; cy1=ym; cz0 = zm; cz1 = node.zmax;  break;
+                    case 4: cx0=xm; cx1=node.xmax; cy0=ym;  cy1=node.ymax; cz0 = node.zmin; cz1 = zm; break;   
+                    case 5: cx0=node.xmin; cx1=xm; cy0=ym;  cy1=node.ymax; cz0 = node.zmin; cz1 = zm; break;
+                    case 6: cx0=node.xmin; cx1=xm; cy0=node.ymin; cy1=ym; cz0 = node.zmin; cz1 = zm;  break;
+                    default:cx0=xm; cx1=node.xmax; cy0=node.ymin; cy1=ym; cz0 = node.zmin; cz1 = zm;  break;
+                }
+                nodes_list.emplace_back(cx0, cx1, cy0, cy1, cz0, cz1); // Generate children (Note: Currently `node` variable has been dereference!!)
+                OctNode& c = nodes_list.back(); 
+                c.ParticlesLocateidx = childStart;
+                c.pcount = childCount;
+                nodes_list[ni].children[q] = (int)nodes_list.size() - 1;
+                stack.push_back(nodes_list[ni].children[q]);
+            }
+            childStart = qptr[q];
         }
     }
-}
-
-// OctTree implementation
-OctTree::OctTree() : root(nullptr), theta(0.5f) {}
-
-OctTree::OctTree(float openingAngle) : root(nullptr), theta(openingAngle) {}
-
-OctTree::~OctTree() {
-    clear();
-}
-
-void OctTree::buildFromParticles(const ParticlesTable& particles) {
-    // Clear existing tree
-    clear();
-    
-    if (particles.N == 0) return;
-    
-    // Find bounding box of all particles
-    float xmin = particles.x[0], xmax = particles.x[0];
-    float ymin = particles.y[0], ymax = particles.y[0];
-    float zmin = particles.z[0], zmax = particles.z[0];
-    
-    for (int i = 1; i < particles.N; i++) {
-        if (particles.x[i] < xmin) xmin = particles.x[i];
-        if (particles.x[i] > xmax) xmax = particles.x[i];
-        if (particles.y[i] < ymin) ymin = particles.y[i];
-        if (particles.y[i] > ymax) ymax = particles.y[i];
-        if (particles.z[i] < zmin) zmin = particles.z[i];
-        if (particles.z[i] > zmax) zmax = particles.z[i];
-    }
-    
-    // Add small padding
-    float padding = 0.1f;
-    xmin -= padding; xmax += padding;
-    ymin -= padding; ymax += padding;
-    zmin -= padding; zmax += padding;
-    
-    // Create root node
-    root = new Node(xmin, xmax, ymin, ymax, zmin, zmax);
-    
-    // Insert all particles
-    for (int i = 0; i < particles.N; i++) {
-        root->insert(i, particles);
-    }
-    
-    // Calculate centers of mass
-    root->calculateCenterOfMass(particles);
-}
-
-OctTree OctTree::buildOctTree(const ParticlesTable& particles) {
-    OctTree tree;
-    tree.buildFromParticles(particles);
-    return tree;
-}
-
-void OctTree::clear() {
-    if (root) {
-        clearNode(root);
-        root = nullptr;
-    }
-}
-
-void OctTree::clearNode(Node* node) {
-    delete node;  // Destructor handles children recursively
-}
-
-void OctTree::saveToFile(const std::string& filename) const {
-    std::ofstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open " << filename << " for writing\n";
-        std::exit(1);
-    }
-    
-    file << "OCTREE\n";
-    file << "# Format: depth xmin xmax ymin ymax zmin zmax centerX centerY centerZ totalMass numParticles [particleIndices...]\n";
-    
-    if (root) {
-        saveNode(file, root, 0);
-    }
-    
-    file.close();
-}
-
-void OctTree::saveNode(std::ofstream& file, Node* node, int depth) const {
-    if (!node) return;
-    
-    file << depth << " "
-         << node->bounds[0] << " " << node->bounds[1] << " "  // xmin xmax
-         << node->bounds[2] << " " << node->bounds[3] << " "  // ymin ymax
-         << node->bounds[4] << " " << node->bounds[5] << " "  // zmin zmax
-         << node->centerOfMass[0] << " " << node->centerOfMass[1] << " " << node->centerOfMass[2] << " "  // center
-         << node->totalMass << " "
-         << node->particleIndices.size();
-    
-    for (int idx : node->particleIndices) {
-        file << " " << idx;
-    }
-    file << "\n";
-    
-    // Recursively save children
-    for (int i = 0; i < 8; i++) {
-        if (node->children[i]) {
-            saveNode(file, node->children[i], depth + 1);
-        }
-    }
+    update_Mtot_COM();
 }

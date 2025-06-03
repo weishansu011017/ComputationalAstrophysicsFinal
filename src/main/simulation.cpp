@@ -20,7 +20,7 @@ int main(int argc, char** argv){
     }
     std::cout << "\n";
     std::cout << " Barnes-Hut tree-based N body simulations\n";
-    std::cout << "     Version 0.0.1\n";
+    std::cout << "     Version 0.0.2\n";
 
     // Read simulation setup
     std::string paramsfile = argv[1];
@@ -85,7 +85,7 @@ int main(int argc, char** argv){
             std::string timeindex = format_index(current_idt, 5);
             std::string output = pt.SimulationTag + "_" + timeindex + ".h5";
             std::cout << "Dump: "<< output << std::endl;
-            pt.extract_particles_table(output);
+            pt.extract_particles_table(output, simsetup.print_internal);
             simsetup.input_file = output;
             simsetup.make_parameters_file();
         }

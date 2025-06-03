@@ -78,7 +78,7 @@ public:
     ## Input
         - string filename: Name of output
     */
-    void extract_particles_table(const std::string& filename) const;
+    void extract_particles_table(const std::string& filename, bool debug = false) const;
 
     /*
         ParticlesTable read_particles_table(const std::string& filename);
@@ -210,12 +210,12 @@ protected:
     // === Base I/O Methods ===
 
     /*
-        void _write_base_HDF5(hid_t file_id) const;
+        void _write_base_HDF5(hid_t file_id, bool debug) const;
     (Internal Method) Write the base properties of particles to HDF5
     ## Input
         - hid_t file_id: The HDF5 file handle created by H5Fcreate or H5Fopen
     */
-    void _write_base_HDF5(hid_t file_id) const;
+    void _write_base_HDF5(hid_t file_id, bool debug) const;
 
     /*
         void _read_base_HDF5(hid_t file_id);
@@ -226,17 +226,17 @@ protected:
     void _read_base_HDF5(hid_t file_id);
     
     /*
-        void _calculate_a_OctNode(int idx, QuadTree::Node* node);
+        void _calculate_a_OctNode(int idx, const OctTree& tree, int nidx);
 
     (Internel method) Calculate acc from a octree node for a sigle particles
     */
-    void _calculate_a_OctNode(int idx, OctTree::Node* node);
+    void _calculate_a_OctNode(int idx, const OctTree& tree, int nidx);
 
 
     /*
-        void _calculate_a_QuadNode(int idx, QuadTree::Node* node)
+        void _calculate_a_QuadNode(int idx, const QuadTree& tree, int nidx)
 
     (Internel method) Calculate acc from a quadtree node for a sigle particles in 2D
     */
-    void _calculate_a_QuadNode(int idx, QuadTree::Node* node);
+    void _calculate_a_QuadNode(int idx, const QuadTree& tree, int nidx);
 };

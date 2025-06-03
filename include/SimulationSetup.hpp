@@ -16,6 +16,7 @@ public:
     int dt_substepsmax = 1;                                                 // Max number of substeps per time step (Current No used)
     int num_per_dump = 10;                                                  // Dump output data per given timestep.
     int a_mode = 0;                                                         // Mode for calculate acceleration (0 => direct N-body, 1 => BHTree)
+    bool print_internal = 0;                                                 // Dump internel vector in `ParticlesTable` (e.g. _ax, _ay, _az...) (0 => Don't print, 1 => print)
 
     // CPU setup
     int OMP_NUM_THREAD = 1;                                                 // Number of OpenMP threads                                

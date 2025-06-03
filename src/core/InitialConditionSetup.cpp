@@ -44,18 +44,22 @@ ParticlesTable setup_initial_condition(const ParticlesSetup& setup, UnitsTable u
         Mtot += mi;
     }
     pt.Mtot = Mtot;
-    float Utot = 0.0;
-    for (int i = 0; i < pt.N; ++i) {
-        for (int j = i + 1; j < pt.N; ++j) {
+    for (int i = 0; i < pt.N; ++i){
+        float Utemp = 0.0;
+        for (int j = 0; j < pt.N; ++j){
+            if (i == j) continue;
             float dx = pt.x[j] - pt.x[i];
             float dy = pt.y[j] - pt.y[i];
             float dz = pt.z[j] - pt.z[i];
-            float r2 = dx*dx + dy*dy + dz*dz + pt.h[i]*pt.h[i];
-            float invr = 1.0f / std::sqrt(r2);
-            Utot -= pt.m[i] * pt.m[j] * invr;
+            float dr2 = dx * dx + dy * dy + dz * dz + 0.5 * (pt.h[i] * pt.h[i] + pt.h[j] * pt.h[j]) ;
+            float invr = 1.0f / sqrtf(dr2);
+            float invr3 = invr * invr * invr;
+            float mjinvr3 = pt.m[j] * invr3;
+            Utemp -= pt.m[i] * pt.m[j] * invr;
         }
+        pt._U[i] = Utemp;
     }
-    pt.Utot = Utot;
+    pt.calculate_Utot();
 
     // Initialize dt
     float max_vel = 0.0f;

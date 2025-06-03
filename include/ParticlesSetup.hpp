@@ -24,7 +24,7 @@ public:
     // Other parameters
     float softfactorx = 0.02;
     float tsfactor = 0.2;
-    float bhTreeTheta = 0.5;
+    float bhTreeTheta = 0.2;
 
     // Destructor
     virtual ~ParticlesSetup() = default;
