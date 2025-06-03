@@ -10,6 +10,7 @@
 #include "ParticlesTable.hpp"
 #include "PhysicalConstants.hpp"
 #include "SimulationSetup.hpp"
+#include "Integrator.hpp"
 
 int main(int argc, char** argv){
     // Checking arguments
@@ -19,7 +20,7 @@ int main(int argc, char** argv){
     }
     std::cout << "\n";
     std::cout << " Barnes-Hut tree-based N body simulations\n";
-    std::cout << "     Version 0.0.1\n";
+    std::cout << "     Version 0.0.2\n";
 
     // Read simulation setup
     std::string paramsfile = argv[1];
@@ -33,19 +34,8 @@ int main(int argc, char** argv){
     int current_idt = simsetup.extract_current_index();
     ParticlesTable pt = ParticlesTable::read_particles_table(simsetup.input_file);
 
-    // Specify the calculate_a() function
-    std::function<void()> ptcalculate_a;
-    if (simsetup.a_mode == 0){
-        ptcalculate_a = [&pt]() {
-            pt.calculate_a_dirnbody();
-        };
-    } else if (simsetup.a_mode == 1) {
-        ptcalculate_a = [&pt]() {
-            pt.calculate_a_BHtree();
-        };
-    } else {
-        throw std::runtime_error("The a_mode is not support to this program!");
-    }
+    // Specify the Integrator
+    Integrator integrator = wrap_Integrator(&pt, &simsetup);
 
     // Other option
 
@@ -54,17 +44,19 @@ int main(int argc, char** argv){
     std::cout << "============================= Start simulation =============================" << std::endl;
     while (true) {
         if (pt.t >= simsetup.tmax){
+            std::cout << "Reached maximum simulation time (t = " << pt.t 
+            << " >= tmax = " << simsetup.tmax << "). Terminating." << std::endl;
             break;
         }
         // Timer start 
         auto start = std::chrono::high_resolution_clock::now();
 
         // KDK algorithm
-        ptcalculate_a();
-        pt.kick(0.5);
-        pt.drift(1.0);
-        ptcalculate_a();
-        pt.kick(0.5);
+        integrator.calculate_a();
+        integrator.kick(0.5);
+        integrator.drift(1.0);
+        integrator.calculate_a();
+        integrator.kick(0.5);
 
         // Sanity check
         pt.particles_validation();
@@ -89,10 +81,11 @@ int main(int argc, char** argv){
         
         if (iter % simsetup.num_per_dump == 0){
             ++current_idt;
+            pt.calculate_Utot();
             std::string timeindex = format_index(current_idt, 5);
             std::string output = pt.SimulationTag + "_" + timeindex + ".h5";
             std::cout << "Dump: "<< output << std::endl;
-            pt.extract_particles_table(output);
+            pt.extract_particles_table(output, simsetup.print_internal);
             simsetup.input_file = output;
             simsetup.make_parameters_file();
         }

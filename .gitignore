@@ -192,6 +192,8 @@ simulation
 *.in
 *.setup
 
+*.txt
+
 # Custom project ignores
 # =============================================================================
 # Add any project-specific files here
