@@ -20,7 +20,9 @@ int main(int argc, char** argv){
     }
     std::cout << "\n";
     std::cout << " Barnes-Hut tree-based N body simulations\n";
-    std::cout << "     Version 0.0.2\n";
+    std::cout << "     Version 0.1.0\n";
+    std::cout << "      Main Developer: Wei-Shan Su,\n";
+    std::cout << "      Contributors:  Yu-Hsuan Tu, Yu-Jen Lin, (Conceptual discussion, physical modeling suggestions)";
 
     // Read simulation setup
     std::string paramsfile = argv[1];
@@ -41,8 +43,14 @@ int main(int argc, char** argv){
     Integrator integrator = wrap_Integrator(&pt, &simsetup);
 
     // Other option
+    if (simsetup.use_GPU){
+        std::cout << "[INFO] GPU mode enabled. Initializing CUDA..." << std::endl;
+        pt.device_init();
+        pt.upload_all();
+    }
 
     // Main iteration
+    static bool has_dumped_initial = false;
     int iter = 0;
     std::cout << "============================= Start simulation =============================" << std::endl;
     while (true) {
@@ -50,6 +58,20 @@ int main(int argc, char** argv){
             std::cout << "Reached maximum simulation time (t = " << pt.t 
             << " >= tmax = " << simsetup.tmax << "). Terminating." << std::endl;
             break;
+        }
+        if (current_idt == 0 && !has_dumped_initial){
+            integrator.calculate_a();
+            if (simsetup.use_GPU){
+                pt.download_state();
+            }
+            pt.calculate_Utot();
+            std::string timeindex = format_index(current_idt, 5);
+            std::string output = pt.SimulationTag + "_" + timeindex + ".h5";
+            std::cout << "Rewrite and Dump: "<< output << std::endl;
+            pt.extract_particles_table(output, simsetup.print_internal);
+            simsetup.input_file = output;
+            simsetup.make_parameters_file();
+            has_dumped_initial = true;
         }
         // Timer start 
         auto start = std::chrono::high_resolution_clock::now();
@@ -66,7 +88,7 @@ int main(int argc, char** argv){
 
         // Timer end
         auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
         // Other updating
         float deltat = mean(pt.dt);         // Currently, we don't have hierarchial time stepping (DO NOT USE THIS IN HIERARCHIAL TIMESTEPPING!!!!!!!!)
@@ -76,7 +98,7 @@ int main(int argc, char** argv){
             << " (code unit)  =====>  "
             << std::scientific << std::setw(13) << std::setprecision(6) << pt.t + deltat
             << " (code unit), Walltime/iter = "
-            << std::setw(8) << duration << " us"
+            << std::setw(11) << duration << " ns"
             << std::endl;
 
         pt.t += deltat;        
@@ -84,6 +106,9 @@ int main(int argc, char** argv){
         
         if (iter % simsetup.num_per_dump == 0){
             ++current_idt;
+            if (simsetup.use_GPU){
+                pt.download_state();
+            }
             pt.calculate_Utot();
             std::string timeindex = format_index(current_idt, 5);
             std::string output = pt.SimulationTag + "_" + timeindex + ".h5";
@@ -94,5 +119,8 @@ int main(int argc, char** argv){
         }
     }
     std::cout << "============================== End simulation ==============================" << std::endl;
+    if (simsetup.use_GPU){
+        pt.device_finalize();
+    }
     return 0;
 }

@@ -10,6 +10,7 @@
 #
 
 import sys
+import argparse
 import subprocess
 import os
 from pathlib import Path
@@ -20,7 +21,8 @@ import shlex
 # ──────────────────────────────────────────────────────────────
 #       Path & Tool chain
 # ──────────────────────────────────────────────────────────────
-CXX = r"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\x64\bin\clang-cl.exe"                        
+CXX = r"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\x64\bin\clang-cl.exe"      
+NVCC = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8\bin"                  
 
 # HDF5 Path
 HDF5_ROOT = Path(r"C:\Program Files\HDF_Group\HDF5\1.14.6")
@@ -31,13 +33,21 @@ SZIP_ROOT = Path("E:/programming/libaec/build/src/Release")
 # Project Path
 CORE_DIR  = Path("src/core")
 MAIN_DIR  = Path("src/main")
+GPU_DIR   = Path("src/gpu")
 TEST_DIR  = Path("test")
 BUILD_DIR = Path("build")
 (BUILD_DIR / "test").mkdir(parents=True, exist_ok=True)
+(BUILD_DIR / "gpu").mkdir(parents=True, exist_ok=True)
+
+# CUDA
+CUDA_ROOT = Path(r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8")
+CUDA_LIB  = CUDA_ROOT / r"lib\x64"
 
 # ──────────────────────────────────────────────────────────────
 #       Flag of compiling
 # ──────────────────────────────────────────────────────────────
+ENABLE_GPU = False
+
 INCLUDE_DIRS = [
     "/Iinclude",
     "/Isrc",
@@ -91,12 +101,40 @@ def compile_exe(output: Path, sources: list[Path]) -> None:
            *LIB_DIRS, *LDFLAGS]
     run(cmd)
 
+def compile_cuda_objs() -> list[Path]:
+    cu_files = list(GPU_DIR.glob("*.cu"))
+    objs = []
+    for cu in cu_files:
+        obj = (BUILD_DIR / "gpu") / (cu.stem + ".obj")
+        cmd = [
+            str(NVCC + r"\nvcc.exe"),
+            "-c", str(cu),
+            "-o", str(obj),
+            "-Xcompiler", "/MD",
+            "-std=c++17",
+            "-O3",
+            f"-Iinclude", f"-Isrc", f"-I{HDF5_INC}",
+            "--compiler-options", "/utf-8, /EHsc,/bigobj",
+        ]
+        run(cmd)
+        objs.append(obj)
+    return objs
+
 # ──────────────────────────────────────────────────────────────
 #           Target
 # ──────────────────────────────────────────────────────────────
 def target_simulation() -> None:
     core = list(Path(CORE_DIR).glob("*.cpp"))
     src  = [MAIN_DIR / "simulation.cpp", *core]
+
+    if ENABLE_GPU:
+        LIB_DIRS.append(f"/LIBPATH:{CUDA_LIB}")
+        LDFLAGS.append("cudart.lib")
+        COMMON_CXXFLAGS.append("-DUSE_CUDA")
+        cuda_objs = compile_cuda_objs()
+        src += cuda_objs               
+         
+
     compile_exe("simulation.exe", src)
 
 def target_setup() -> None:
@@ -141,7 +179,14 @@ TARGETS = {
 }
 
 if __name__ == "__main__":
-    tgt = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_TARGET
+    parser = argparse.ArgumentParser()
+    parser.add_argument("target", nargs="?", default="simulation")
+    parser.add_argument("--gpu", type=str, default="false")
+    args = parser.parse_args()
+
+    ENABLE_GPU = args.gpu.lower() in ("1", "true", "yes")
+
+    tgt = args.target
     if tgt not in TARGETS:
         print("Unknown target. Use one of:", ", ".join(TARGETS))
         sys.exit(1)

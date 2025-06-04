@@ -1,10 +1,11 @@
 #pragma once
-
+typedef struct CUstream_st* cudaStream_t;
 #include <vector>
 #include <string>
-#include "UnitsTable.hpp"
 #include "QuadTree.hpp"
 #include "OctTree.hpp"
+
+class UnitsTable;
 
 /*
     class ParticlesTable
@@ -15,7 +16,7 @@ class ParticlesTable{
 public:
     // Variable declaration
     // Simulation condition
-    UnitsTable unittable;                                       // Code unit (to cgs).
+    const UnitsTable& unittable;                                      // Code unit (to cgs).
     
     // Table of particles(External)
     std::vector<uint32_t> particle_index;                       // Particles index
@@ -46,24 +47,7 @@ public:
 
     // Method declaration
     // Constructor
-    ParticlesTable(const UnitsTable& unit , int N_)
-        : unittable(unit), N(N_)
-    {
-        _resize_vectors(N);
-        std::fill(x.begin(), x.end(), 0.0f);
-        std::fill(y.begin(), y.end(), 0.0f);
-        std::fill(z.begin(), z.end(), 0.0f);
-        std::fill(vx.begin(), vx.end(), 0.0f);
-        std::fill(vy.begin(), vy.end(), 0.0f);
-        std::fill(vz.begin(), vz.end(), 0.0f);
-        std::fill(m.begin(),  m.end(),  0.0f);
-        std::fill(h.begin(),  h.end(),  0.0f);
-        std::fill(dt.begin(), dt.end(), 0.0f);
-        std::fill(_ax.begin(), _ax.end(), 0.0f);
-        std::fill(_ay.begin(), _ay.end(), 0.0f);
-        std::fill(_az.begin(), _az.end(), 0.0f);
-        std::fill(_U.begin(), _U.end(), 0.0f);
-    }
+    ParticlesTable(const UnitsTable& unit , int N_);
     
     // Destructor
     ~ParticlesTable() = default;
@@ -207,15 +191,123 @@ public:
     void set_bhTreeTheta(float theta);
 
 
+    //=== CUDA GPU-related===//
+    // Define pointer of array
+    float *d_x=nullptr, *d_y=nullptr, *d_z=nullptr;
+    float *d_vx=nullptr, *d_vy=nullptr, *d_vz=nullptr;
+    float *d_m=nullptr,  *d_h=nullptr, *d_dt=nullptr;
+    float *d_ax=nullptr,*d_ay=nullptr,*d_az=nullptr,*d_U=nullptr;
+
+    int block = 256;
+    cudaStream_t stream = 0;         
+    bool gpu_init = false;
+    QuadNode* d_nodes_2D = nullptr;
+    OctNode* d_nodes_3D = nullptr;
+    int* d_order = nullptr;
+
+    /*
+        void device_init();
+
+    Initialize GPU device memory and allocate necessary buffers.
+    This function must be called before any GPU operations.
+    */    
+    void device_init();
+
+    /*
+        void device_finalize();
+
+    Free all GPU memory previously allocated by `device_init`.
+    */
+    void device_finalize();
+
+    /*
+        void upload_all();
+
+    Upload all particle data from host to device memory.
+    */
+    void upload_all();
+
+    /*
+        void download_state();
+
+    Download all relevant particle state from device to host.
+    */
+    void download_state();
+
+
+    /*
+        void calculate_a_dirnbody_gpu();
+
+    Calculate the acceleration by direct N-body method using CUDA on GPU.
+    */
+    void calculate_a_dirnbody_gpu();
+
+    /*
+        void calculate_a_dirnbody_2D_gpu();
+
+    Calculate the acceleration by direct N-body method using CUDA on GPU in 2D
+    */
+    void calculate_a_dirnbody_2D_gpu();
+
+    /*
+        void calculate_a_BHtree_gpu();
+
+    Calculate the acceleration by Barnes–Hut tree
+    */
+    void calculate_a_BHtree_gpu();
+
+    /*
+        void calculate_a_BHtree_2D_gpu();
+
+    Calculate the acceleration by Barnes–Hut tree in 2D
+    */
+    void calculate_a_BHtree_2D_gpu();
+
+    /*
+        void kick_gpu(float scale);
+
+    Perform a kick operation on GPU (update velocity using acceleration).
+
+    ## Input
+        - float scale: scale of dt (applied as v += scale * dt * a)
+    */
+    void kick_gpu(float scale);
+
+    /*
+        void drift_gpu(float scale);
+
+    Perform a drift operation on GPU (update position using velocity).
+
+    ## Input
+        - float scale: scale of dt (applied as x += scale * dt * v)
+    */
+    void drift_gpu(float scale);
+
+    /*
+        void kick_2D_gpu(float scale);
+
+    Perform a kick operation on GPU (update velocity using acceleration) in 2D
+
+    ## Input
+        - float scale: scale of dt (applied as v += scale * dt * a)
+    */
+    void kick_2D_gpu(float scale);
+
+    /*
+        void drift_2D_gpu(float scale);
+
+    Perform a drift operation on GPU (update position using velocity) in 2D.
+
+    ## Input
+        - float scale: scale of dt (applied as x += scale * dt * v)
+    */
+    void drift_2D_gpu(float scale);
+
+
+
 protected:
     // Allocating vector
-    virtual void _resize_vectors(std::size_t N) {
-        particle_index.resize(N);
-        x.resize(N); y.resize(N); z.resize(N);
-        vx.resize(N); vy.resize(N); vz.resize(N);
-        m.resize(N); h.resize(N); dt.resize(N);
-        _ax.resize(N),_ay.resize(N),_az.resize(N); _U.resize(N);
-    }
+    void _resize_vectors(std::size_t N);
 
     // === Base I/O Methods ===
 
@@ -225,7 +317,7 @@ protected:
     ## Input
         - hid_t file_id: The HDF5 file handle created by H5Fcreate or H5Fopen
     */
-    void _write_base_HDF5(hid_t file_id, bool debug) const;
+    void _write_base_HDF5(long long file_id, bool debug) const;
 
     /*
         void _read_base_HDF5(hid_t file_id);
@@ -233,7 +325,7 @@ protected:
     ## Input
         - hid_t file_id: The HDF5 file handle created by H5Fcreate or H5Fopen
     */
-    void _read_base_HDF5(hid_t file_id);
+    void _read_base_HDF5(long long file_id);
     
     /*
         void _calculate_a_OctNode(int idx, const OctTree& tree, int nidx);

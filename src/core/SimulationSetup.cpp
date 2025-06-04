@@ -62,12 +62,13 @@ void SimulationSetup::generate_parameters_file(const ParticlesSetup& setup, cons
     _write_toml_kvc(fout, "dt_substepsmax", 1, "Max number of substeps per time step (Current No used)");
     _write_toml_kvc(fout, "num_per_dump", 10, "Dump output data per given timestep.");
     _write_toml_kvc(fout, "a_mode", 0, "Mode for calculate acceleration (0 => direct N-body, 1 => BHTree)");
-    _write_toml_kvc(fout, "print_internal", 0, "Dump internel vector in `ParticlesTable` (e.g. _ax, _ay, _az...) (0 => Don't print, 1 => print).");
+    _write_toml_kvc(fout, "print_internal", false, "Dump internel vector in `ParticlesTable` (e.g. _ax, _ay, _az...)");
 
     fout << "[CPUSetup]\n";
     _write_toml_kvc(fout, "OMP_NUM_THREAD", 1, "Number of OpenMP threads");
 
     fout << "[GPUSetup]\n";
+    _write_toml_kvc(fout, "use_GPU", false, "Enable GPU (Currently CUDA)");
     _write_toml_kvc(fout, "BLOCK_SIZE", 32, "GPU block size");
 
     fout << "\n";
@@ -81,7 +82,6 @@ void SimulationSetup::make_parameters_file(){
         std::cerr << "Failed to open file for writing: " << paramspath << std::endl;
         std::exit(1);
     }
-    int print_int = (print_internal) ? 1 : 0;
     fout << "[SimulationParameters]\n";
     _write_toml_kvc(fout, "input_file", input_file, "File for reading (Update whenever extract new dumpfile)");
     _write_toml_kvc(fout, "tmax", tmax, "Max simulation time (IN CODE UNIT)");
@@ -89,12 +89,13 @@ void SimulationSetup::make_parameters_file(){
     _write_toml_kvc(fout, "dt_substepsmax", dt_substepsmax, " Max number of substeps per time step (Current No used)");
     _write_toml_kvc(fout, "num_per_dump", num_per_dump, "Dump output data per given timestep.");
     _write_toml_kvc(fout, "a_mode", a_mode, "Mode for calculate acceleration (0 => direct N-body, 1 => BHTree)");
-    _write_toml_kvc(fout, "print_internal", print_int, "Dump internel vector in `ParticlesTable` (e.g. _ax, _ay, _az...) (0 => Don't print, 1 => print).");
+    _write_toml_kvc(fout, "print_internal", false, "Dump internel vector in `ParticlesTable` (e.g. _ax, _ay, _az...)");
 
     fout << "[CPUSetup]\n";
     _write_toml_kvc(fout, "OMP_NUM_THREAD", OMP_NUM_THREAD, "Number of OpenMP threads");
 
     fout << "[GPUSetup]\n";
+    _write_toml_kvc(fout, "use_GPU", use_GPU, "Enable GPU (Currently CUDA)");
     _write_toml_kvc(fout, "BLOCK_SIZE",BLOCK_SIZE, "GPU block size");
 
     fout << "\n";
@@ -116,15 +117,10 @@ void SimulationSetup::_read_params_toml(const std::string& paramsfilepath){
     dt_substepsmax           = config["SimulationParameters"]["dt_substepsmax"].value_or(dt_substepsmax);
     num_per_dump             = config["SimulationParameters"]["num_per_dump"].value_or(num_per_dump);
     a_mode                   = config["SimulationParameters"]["a_mode"].value_or(a_mode);
-    int print_int            = config["SimulationParameters"]["print_internal"].value_or(0);
+    print_internal            = config["SimulationParameters"]["print_internal"].value_or(print_internal);
     OMP_NUM_THREAD           = config["CPUSetup"]["OMP_NUM_THREAD"].value_or(OMP_NUM_THREAD);
+    use_GPU                  = config["GPUSetup"]["use_GPU"].value_or(use_GPU);
     BLOCK_SIZE               = config["GPUSetup"]["BLOCK_SIZE"].value_or(BLOCK_SIZE);
-
-    if (print_int == 0){
-        print_internal = false;
-    } else {
-        print_internal = true;
-    }
 
 }
 

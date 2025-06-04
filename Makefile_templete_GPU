@@ -1,5 +1,4 @@
 #=== Toolchain ===#
-LLVM_DIR := /opt/homebrew/opt/llvm
 CXX      := clang++
 CUDA_DIR    ?= /path/to/your/cuda
 NVCC        ?= $(CUDA_DIR)/bin/nvcc
@@ -12,7 +11,7 @@ LIB_DIRS     := -L/opt/homebrew/lib
 CUDA_FLAGS  := -arch=sm_60 -O3
 
 #=== Feature flags ===#
-
+USE_CUDA ?= 0
 
 #=== External library flags ===#
 EXTERNAL_LIBS := hdf5
@@ -30,12 +29,30 @@ BUILD_DIR   := build
 #=== Searching all test/*.cpp ===#
 TESTS := $(basename $(notdir $(wildcard $(TEST_DIR)/*.cpp)))
 
+#=== CUDA-related option ===#
+ifeq ($(USE_CUDA), 1)
+CXXFLAGS      += -DUSE_CUDA
+CUDA_OBJ_DIR  := $(BUILD_DIR)/gpu
+CUDA_SRC      =  $(wildcard src/gpu/*.cu)
+CUDA_OBJS     =  $(patsubst src/gpu/%.cu, $(CUDA_OBJ_DIR)/%.o, $(CUDA_SRC))
+LDFLAGS       += -L$(CUDA_DIR)/lib64 -lcudart
+
+# CUDA object build rule
+$(CUDA_OBJ_DIR)/%.o: src/gpu/%.cu
+	@mkdir -p $(CUDA_OBJ_DIR)
+	$(NVCC) -c $< -o $@ $(CUDA_FLAGS) -Iinclude -Isrc -Iutil/tomlplusplus/include
+endif
+
+
 #=== Target of testfiles ===#
 TESTSTARGETS := $(addprefix $(BUILD_DIR)/test/, $(TESTS))
 
 #=== Target of simulation.cpp ===#
 MAINTARGET := simulation
 MAIN_SRC   := $(MAIN_DIR)/simulation.cpp $(wildcard $(CORE_DIR)/*.cpp)
+ifeq ($(USE_CUDA), 1)
+MAIN_SRC += $(CUDA_OBJS)
+endif
 
 #=== Target of setup.cpp ===#
 SETUPTARGET := setup
@@ -46,13 +63,14 @@ simulation:
 $(MAINTARGET): $(MAIN_SRC)
 	@echo "### Compiler        : $(CXX)"
 	@echo "### External libs   : $(EXTERNAL_LIBS)"
+	@echo "### GPU Enabled     : $(USE_CUDA)"
 	@echo "Tip: If your dependencies are not installed in system paths,"
 	@echo "        you may need to set:"
 	@echo "        export PKG_CONFIG_PATH=/your/custom/path/lib/pkgconfig"
 	@echo "                   "
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
-#=== CUDA GPU Simulation === #
+
 
 #=== Default Initial Condition constructor ===#
 setup:

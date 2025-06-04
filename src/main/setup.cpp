@@ -16,6 +16,8 @@ int main(int argc, char** argv){
     std::cout << "\n";
     std::cout << " Initial Condition Sampler\n";
     std::cout << "     Version 0.0.3\n";
+    std::cout << "      Main Developer: Wei-Shan Su,\n";
+    std::cout << "      Contributors:  Yu-Hsuan Tu, Yu-Jen Lin, (Conceptual discussion, physical modeling suggestions)";
 
     // Preparing input output argument
     std::string ICsetup = argv[1];
