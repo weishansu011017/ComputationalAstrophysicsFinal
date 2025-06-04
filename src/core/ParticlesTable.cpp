@@ -43,7 +43,6 @@ void ParticlesTable::_write_base_HDF5(hid_t file_id, bool debug) const {
     write_scalar("N", N, H5T_NATIVE_INT);
     write_scalar("t", t, H5T_NATIVE_FLOAT);
     write_scalar("dimension", dimension, H5T_NATIVE_INT);
-    write_scalar("bhTreeTheta", bhTreeTheta, H5T_NATIVE_FLOAT);
     write_scalar("Mtot", Mtot, H5T_NATIVE_FLOAT);
     write_scalar("Utot", Utot, H5T_NATIVE_FLOAT);
     write_string("SimulationTag", SimulationTag);
@@ -129,7 +128,6 @@ void ParticlesTable::_read_base_HDF5(hid_t file_id){
     read_scalar("/params","Utot", H5T_NATIVE_FLOAT, &Utot);
     read_string("/params", "SimulationTag", SimulationTag);
     read_scalar("/params", "dimension", H5T_NATIVE_INT, &dimension);
-    read_scalar("/params", "bhTreeTheta",H5T_NATIVE_FLOAT, &bhTreeTheta);
 
     // ============== /ParticlesTable/ ==============
     auto read_float_vector = [&](const char* group, const char* name, std::vector<float>& vec) {
@@ -530,4 +528,8 @@ OctTree ParticlesTable::buildOctTree() const {
     octtree.reserve_nodes(N);
     octtree.build_tree(x, y, z, m);
     return octtree;
+}
+
+void ParticlesTable::set_bhTreeTheta(float theta){
+    bhTreeTheta = theta;
 }

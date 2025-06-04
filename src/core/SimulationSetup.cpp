@@ -58,6 +58,7 @@ void SimulationSetup::generate_parameters_file(const ParticlesSetup& setup, cons
     fout << "[SimulationParameters]\n";
     _write_toml_kvc(fout, "input_file", input_file, "File for reading (Update whenever extract new dumpfile)");
     _write_toml_kvc(fout, "tmax", 4000.0 * dtref, "Max simulation time (IN CODE UNIT)");
+    _write_toml_kvc(fout, "bhTreeTheta", 0.2, "Angle of BH Tree (Suggestion: 0.01 < theta < 1.0)");
     _write_toml_kvc(fout, "dt_substepsmax", 1, "Max number of substeps per time step (Current No used)");
     _write_toml_kvc(fout, "num_per_dump", 10, "Dump output data per given timestep.");
     _write_toml_kvc(fout, "a_mode", 0, "Mode for calculate acceleration (0 => direct N-body, 1 => BHTree)");
@@ -84,6 +85,7 @@ void SimulationSetup::make_parameters_file(){
     fout << "[SimulationParameters]\n";
     _write_toml_kvc(fout, "input_file", input_file, "File for reading (Update whenever extract new dumpfile)");
     _write_toml_kvc(fout, "tmax", tmax, "Max simulation time (IN CODE UNIT)");
+    _write_toml_kvc(fout, "bhTreeTheta", bhTreeTheta, "Angle of BH Tree (Suggestion: 0.01 < theta < 1.0)");
     _write_toml_kvc(fout, "dt_substepsmax", dt_substepsmax, " Max number of substeps per time step (Current No used)");
     _write_toml_kvc(fout, "num_per_dump", num_per_dump, "Dump output data per given timestep.");
     _write_toml_kvc(fout, "a_mode", a_mode, "Mode for calculate acceleration (0 => direct N-body, 1 => BHTree)");
@@ -110,6 +112,7 @@ void SimulationSetup::_read_params_toml(const std::string& paramsfilepath){
     paramspath               = paramsfilepath;
     input_file               = config["SimulationParameters"]["input_file"].value_or(input_file);
     tmax                     = config["SimulationParameters"]["tmax"].value_or(tmax);
+    bhTreeTheta              = config["SimulationParameters"]["bhTreeTheta"].value_or(bhTreeTheta);
     dt_substepsmax           = config["SimulationParameters"]["dt_substepsmax"].value_or(dt_substepsmax);
     num_per_dump             = config["SimulationParameters"]["num_per_dump"].value_or(num_per_dump);
     a_mode                   = config["SimulationParameters"]["a_mode"].value_or(a_mode);

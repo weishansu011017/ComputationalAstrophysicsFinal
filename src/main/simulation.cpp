@@ -34,6 +34,9 @@ int main(int argc, char** argv){
     int current_idt = simsetup.extract_current_index();
     ParticlesTable pt = ParticlesTable::read_particles_table(simsetup.input_file);
 
+    // Setup theta
+    pt.set_bhTreeTheta(simsetup.bhTreeTheta);
+
     // Specify the Integrator
     Integrator integrator = wrap_Integrator(&pt, &simsetup);
 

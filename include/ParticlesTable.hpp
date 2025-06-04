@@ -41,7 +41,7 @@ public:
     float t = 0.0;
     float Mtot = 0.0;
     float Utot = 0.0;
-    float bhTreeTheta = 0.5f;
+    float bhTreeTheta = 0.0f;
     std::string SimulationTag;
 
     // Method declaration
@@ -195,6 +195,16 @@ public:
     Returns an OctTree object
     */
     OctTree buildOctTree() const;
+
+    /*
+        void set_bhTreeTheta(float theta);
+
+    Set the internel variable `bhTreeTheta` to the given value
+
+    ## Input
+        - float theta: The new bhTreeTheta
+    */
+    void set_bhTreeTheta(float theta);
 
 
 protected:
