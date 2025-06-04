@@ -1,6 +1,12 @@
 #include <hdf5.h>
 #include <string>
 #include "UnitsTable.hpp"
+#include "ParticlesSetup.hpp"
+
+UnitsTable UnitsTable::setup_units(const ParticlesSetup& setup){
+        UnitsTable units = UnitsTable(setup.udist, setup.umass);
+        return units;
+    };
 
 void UnitsTable::read_unit_HDF5(hid_t file_id){
     auto read_scalar = [&](const char* group, const char* name, hid_t h5type, void* dst) {

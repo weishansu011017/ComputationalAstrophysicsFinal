@@ -241,7 +241,7 @@ ParticlesTable ParticlesTable::read_particles_table(const std::string& filename)
     // ==============================================
     // Close File
     H5Fclose(file_id);
-
+    
     return pt;
 }
 

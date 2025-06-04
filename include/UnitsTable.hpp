@@ -1,12 +1,11 @@
 #pragma once
-#include <hdf5.h>
 #include <cmath>
 #include <iostream>
+#include <string>
 #include <cstdlib>
-#include "ParticlesSetup.hpp"
 #include "PhysicalConstants.hpp"
 
-
+class ParticlesSetup;
 /*
 Table of unit for setup
 */
@@ -41,7 +40,7 @@ public:
     ## Input
         - hid_t file_id: The HDF5 file handle created by H5Fcreate or H5Fopen
     */
-    void read_unit_HDF5(hid_t file_id);
+    void read_unit_HDF5(int64_t file_id);
 
     /*
         UnitsTable setup_units(const ParticlesSetup& setup);
@@ -53,10 +52,7 @@ public:
     ## Output
         - `UnitsTable`: The code units container.
     */
-    static UnitsTable setup_units(const ParticlesSetup& setup){
-        UnitsTable units = UnitsTable(setup.udist, setup.umass);
-        return units;
-    };
+    static UnitsTable setup_units(const ParticlesSetup& setup);
 private:
 protected:    
 };

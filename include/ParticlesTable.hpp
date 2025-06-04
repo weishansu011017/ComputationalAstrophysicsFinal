@@ -2,6 +2,7 @@
 typedef struct CUstream_st* cudaStream_t;
 #include <vector>
 #include <string>
+#include "UnitsTable.hpp"
 #include "QuadTree.hpp"
 #include "OctTree.hpp"
 
@@ -16,7 +17,7 @@ class ParticlesTable{
 public:
     // Variable declaration
     // Simulation condition
-    const UnitsTable& unittable;                                      // Code unit (to cgs).
+    UnitsTable unittable;                                      // Code unit (to cgs).
     
     // Table of particles(External)
     std::vector<uint32_t> particle_index;                       // Particles index
