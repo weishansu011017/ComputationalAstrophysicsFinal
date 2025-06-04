@@ -4,7 +4,24 @@ using GLMakie
 using Observables
 using GeometryBasics
 using Statistics
+using Glob
+using Dates
 using Printf
+
+function get_files()
+    if Sys.iswindows()
+        if isempty(ARGS)
+            error("On Windows, please specify the folder containing HDF5 files as an argument.\nExample: julia visualization_2Dparticles_interactive.jl myfolder")
+        end
+        folder = ARGS[1]
+        return sort(glob("*.h5", folder)) 
+    else
+        if isempty(ARGS)
+            error("Please provide one or more HDF5 files as arguments.\nExample: julia visualization_2Dparticles_interactive.jl Sim_*.h5")
+        end
+        return ARGS
+    end
+end
 
 function main()
     # Two panel: The upper is the 2D visualization, the lower is the error-time diagram(fixed)
@@ -21,7 +38,7 @@ function main()
     title_obs = @lift($xytitle[3])
 
     # Read file
-    files = ARGS
+    files = get_files()
     testdata = read_dumpfile(files[1])
     SimulationTag[] = testdata.params["SimulationTag"]
 

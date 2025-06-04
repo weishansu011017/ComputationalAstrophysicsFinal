@@ -8,6 +8,34 @@
 #include "QuadTree.hpp"
 #include "OctTree.hpp"
 
+ParticlesTable::ParticlesTable(const UnitsTable& unit, int N_)
+    : unittable(unit), N(N_)
+{
+    _resize_vectors(N);
+    std::fill(x.begin(), x.end(), 0.0f);
+    std::fill(y.begin(), y.end(), 0.0f);
+    std::fill(z.begin(), z.end(), 0.0f);
+    std::fill(vx.begin(), vx.end(), 0.0f);
+    std::fill(vy.begin(), vy.end(), 0.0f);
+    std::fill(vz.begin(), vz.end(), 0.0f);
+    std::fill(m.begin(),  m.end(),  0.0f);
+    std::fill(h.begin(),  h.end(),  0.0f);
+    std::fill(dt.begin(), dt.end(), 0.0f);
+    std::fill(_ax.begin(), _ax.end(), 0.0f);
+    std::fill(_ay.begin(), _ay.end(), 0.0f);
+    std::fill(_az.begin(), _az.end(), 0.0f);
+    std::fill(_U.begin(),  _U.end(),  0.0f);
+}
+
+void ParticlesTable::_resize_vectors(std::size_t N) {
+    particle_index.resize(N);
+    x.resize(N); y.resize(N); z.resize(N);
+    vx.resize(N); vy.resize(N); vz.resize(N);
+    m.resize(N); h.resize(N); dt.resize(N);
+    _ax.resize(N); _ay.resize(N); _az.resize(N);
+    _U.resize(N);
+}
+
 void ParticlesTable::_write_base_HDF5(hid_t file_id, bool debug) const {
     // ============== /params/ ==============
     hid_t g_params = H5Gcreate2(file_id, "/params", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);

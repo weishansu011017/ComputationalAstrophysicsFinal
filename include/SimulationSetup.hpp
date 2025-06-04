@@ -23,6 +23,7 @@ public:
     int OMP_NUM_THREAD = 1;                                                 // Number of OpenMP threads                                
     
     // GPU setup
+    bool use_GPU = false;                                                   // Enable GPU
     int BLOCK_SIZE = 32;                                                    // GPU block size
 
 

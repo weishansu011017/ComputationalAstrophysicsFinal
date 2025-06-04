@@ -1,5 +1,4 @@
 #=== Toolchain ===#
-LLVM_DIR := /opt/homebrew/opt/llvm
 CXX      := clang++
 
 #=== Path flags ===#
