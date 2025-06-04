@@ -1,6 +1,8 @@
 #include <vector>
 #include <numeric> 
 #include <functional>  
+#include <cstdlib>
+#include <iostream>
 #include "OctTree.hpp"
 
 void OctNode::subdivide(std::vector<OctNode>& nodes_list){
@@ -99,7 +101,8 @@ void OctTree::update_Mtot_COM(){
 
 void OctTree::build_tree(const std::vector<float>& xin, const std::vector<float>& yin, const std::vector<float>& zin, const std::vector<float>& mass){
     if (xin.size()!=yin.size() || xin.size()!=zin.size() || xin.size()!=mass.size()){
-        throw std::runtime_error("x/y/z/mass size mismatch");
+        std::cerr << "x/y/z/mass size mismatch" << std::endl;
+        std::exit(1);
     }
     const std::size_t N = xin.size();
     x = xin;

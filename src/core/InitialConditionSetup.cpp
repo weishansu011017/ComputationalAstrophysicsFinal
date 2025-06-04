@@ -18,7 +18,6 @@ ParticlesTable setup_initial_condition(const ParticlesSetup& setup, UnitsTable u
     ParticlesTable pt(unit, setup.N);
     pt.SimulationTag = setup.SimulationTag;
     pt.dimension = setup.dimension;
-    pt.bhTreeTheta = setup.bhTreeTheta;
 
     // Sampling particles properties
     // Initialize h

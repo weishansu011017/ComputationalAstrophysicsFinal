@@ -1,6 +1,8 @@
 #include <vector>
 #include <numeric> 
 #include <functional>  
+#include <cstdlib>
+#include <iostream>
 #include "QuadTree.hpp"
 
 void QuadNode::subdivide(std::vector<QuadNode>& nodes_list){
@@ -83,7 +85,8 @@ void QuadTree::update_Mtot_COM(){
 
 void QuadTree::build_tree(const std::vector<float>& xin, const std::vector<float>& yin, const std::vector<float>& mass){
     if (xin.size()!=yin.size() || xin.size()!=mass.size()){
-        throw std::runtime_error("x/y/m size mismatch");
+        std::cerr << "x/y/mass size mismatch" << std::endl;
+        std::exit(1);
     }
     const std::size_t N = xin.size();
     x = xin;
