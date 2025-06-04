@@ -43,12 +43,13 @@ int main(int argc, char** argv){
     Integrator integrator = wrap_Integrator(&pt, &simsetup);
 
     // Other option
+    #ifdef USE_CUDA
     if (simsetup.use_GPU){
-        std::cout << "[INFO] GPU mode enabled. Initializing CUDA..." << std::endl;
+        std::cout << "GPU mode enabled. Initializing CUDA..." << std::endl;
         pt.device_init();
         pt.upload_all();
     }
-
+    #endif
     // Main iteration
     static bool has_dumped_initial = false;
     int iter = 0;
@@ -61,9 +62,11 @@ int main(int argc, char** argv){
         }
         if (current_idt == 0 && !has_dumped_initial){
             integrator.calculate_a();
+            #ifdef USE_CUDA
             if (simsetup.use_GPU){
                 pt.download_state();
             }
+            #endif
             pt.calculate_Utot();
             std::string timeindex = format_index(current_idt, 5);
             std::string output = pt.SimulationTag + "_" + timeindex + ".h5";
@@ -106,9 +109,11 @@ int main(int argc, char** argv){
         
         if (iter % simsetup.num_per_dump == 0){
             ++current_idt;
+            #ifdef USE_CUDA
             if (simsetup.use_GPU){
                 pt.download_state();
             }
+            #endif
             pt.calculate_Utot();
             std::string timeindex = format_index(current_idt, 5);
             std::string output = pt.SimulationTag + "_" + timeindex + ".h5";
@@ -119,8 +124,10 @@ int main(int argc, char** argv){
         }
     }
     std::cout << "============================== End simulation ==============================" << std::endl;
+    #ifdef USE_CUDA
     if (simsetup.use_GPU){
         pt.device_finalize();
     }
+    #endif
     return 0;
 }
