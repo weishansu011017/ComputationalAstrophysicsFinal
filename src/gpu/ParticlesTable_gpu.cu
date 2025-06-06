@@ -158,7 +158,7 @@ __global__ void BHtree_kernel(const float* __restrict x,
             azi += mInvr3 * dz;
             Ui -= mi * node.Mtot * invr;
         } else {
-            for (int q = 0; q < 4; ++q) {
+            for (int q = 0; q < 8; ++q) {
                 int cidx = node.children[q];
                 if (cidx >= 0 && sp < MAX_STACK){
                     stack[sp++] = cidx;
