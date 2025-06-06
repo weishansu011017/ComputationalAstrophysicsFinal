@@ -36,7 +36,7 @@ void ParticlesTable::_resize_vectors(std::size_t N) {
     _U.resize(N);
 }
 
-void ParticlesTable::_write_base_HDF5(hid_t file_id, bool debug) const {
+void ParticlesTable::_write_base_HDF5(long long file_id, bool debug) const {
     // ============== /params/ ==============
     hid_t g_params = H5Gcreate2(file_id, "/params", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     // Lambda function for writing parameter
@@ -121,7 +121,7 @@ void ParticlesTable::_write_base_HDF5(hid_t file_id, bool debug) const {
     H5Gclose(g_table);
 }
 
-void ParticlesTable::_read_base_HDF5(hid_t file_id){
+void ParticlesTable::_read_base_HDF5(long long file_id){
     // ============== /params/ ==============
     auto read_scalar = [&](const char* group, const char* name, hid_t h5type, void* dst) {
         std::string path = std::string(group) + "/" + name;

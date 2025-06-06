@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <algorithm> 
+#include <math.h>
 
 #ifdef __CUDACC__
   #define HD __host__ __device__
